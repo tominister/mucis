@@ -26,6 +26,7 @@ class AudioEngine {
         this.transport = Tone.Transport;
         this.producerTagAudio = null;
         this.producerTagPlayer = null;
+    this.producerTagSpeech = null; // text to speak as fallback
         
         // Callbacks
         this.onStepChange = null;
@@ -162,6 +163,28 @@ class AudioEngine {
                     console.log('🎤 Playing producer tag at loop start');
                 } catch (error) {
                     console.error('Error playing producer tag:', error);
+                }
+            } else if (this.currentStep === 0 && this.producerTagSpeech) {
+                // If there's no audio player, use SpeechSynthesis as a fallback
+                try {
+                    // Use setTimeout to align speech with the scheduled time roughly
+                    setTimeout(() => {
+                        try {
+                            const utter = new SpeechSynthesisUtterance(this.producerTagSpeech);
+                            // Attempt to prefer a female voice if available
+                            const voices = speechSynthesis.getVoices() || [];
+                            const femaleVoice = voices.find(v => /female|woman|woman voice|girl/i.test(v.name) || /female|woman|girl/i.test(v.gender || ''));
+                            if (femaleVoice) utter.voice = femaleVoice;
+                            utter.rate = 1.0;
+                            utter.pitch = 1.1;
+                            speechSynthesis.speak(utter);
+                            console.log('🎤 Spoken producer tag (TTS):', this.producerTagSpeech);
+                        } catch (e) {
+                            console.warn('SpeechSynthesis fallback failed:', e);
+                        }
+                    }, 0);
+                } catch (error) {
+                    console.error('Error speaking producer tag:', error);
                 }
             }
             
@@ -326,8 +349,22 @@ class AudioEngine {
         if (audioURL) {
             this.producerTagPlayer = new Tone.Player(audioURL).toDestination();
             console.log('Producer tag audio loaded');
+            // Clear any speech fallback when an actual audio URL is provided
+            this.producerTagSpeech = null;
         } else {
             this.producerTagPlayer = null;
+        }
+    }
+
+    /**
+     * Use browser SpeechSynthesis for producer tag fallback
+     */
+    setProducerTagSpeech(spokenText) {
+        if (typeof spokenText === 'string' && spokenText.trim().length > 0) {
+            this.producerTagSpeech = spokenText.trim();
+            console.log('Producer tag TTS text set:', this.producerTagSpeech);
+        } else {
+            this.producerTagSpeech = null;
         }
     }
 

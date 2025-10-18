@@ -623,7 +623,16 @@ class SoundSketchApp {
                     this.elements.generateTagBtn.textContent = '🎵 Generate Tag';
                 }, 2000);
             } else {
-                alert('Failed to generate producer tag. Please try again.');
+                // Backend didn't return an audio URL — use SpeechSynthesis fallback
+                console.warn('No audio URL returned from API — using SpeechSynthesis fallback for producer tag');
+                this.producerTagAudio = null;
+                // Store a simple default if user didn't type anything — keep their tag otherwise
+                const spokenTag = tag || 'hey astro';
+                this.audioEngine.setProducerTagSpeech(spokenTag);
+                this.elements.generateTagBtn.textContent = '✅ Tag Ready (TTS)';
+                setTimeout(() => {
+                    this.elements.generateTagBtn.textContent = '🎵 Generate Tag';
+                }, 2000);
             }
 
         } catch (error) {

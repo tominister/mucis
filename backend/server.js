@@ -25,6 +25,19 @@ app.use(express.static('frontend'));
 // Serve drumset samples
 app.use('/drumset', express.static('drumset'));
 
+// Simple request logging for debugging (method, path, body)
+app.use((req, res, next) => {
+    try {
+        console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+        if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
+            console.log('Request body:', req.body);
+        }
+    } catch (e) {
+        console.warn('Request logging failed', e);
+    }
+    next();
+});
+
 // Configure multer for file uploads
 const upload = multer({
     storage: multer.memoryStorage(),

@@ -123,7 +123,9 @@ class APIClient {
                 });
 
                 if (!response.ok) {
-                    throw new Error(`API error: ${response.status}`);
+                    let errText = '';
+                    try { errText = await response.text(); } catch (e) { /* ignore */ }
+                    throw new Error(`API error: ${response.status} ${errText}`);
                 }
 
                 const audioBlob = await response.blob();
