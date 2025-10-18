@@ -1,0 +1,433 @@
+/* SoundSketch.tech Styles */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #333;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Header */
+.header {
+    text-align: center;
+    margin-bottom: 40px;
+    color: white;
+}
+
+.header h1 {
+    font-size: 3rem;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.header p {
+    font-size: 1.2rem;
+    opacity: 0.9;
+}
+
+/* Main Interface */
+.main-interface {
+    display: grid;
+    gap: 30px;
+}
+
+/* Sections */
+section {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+}
+
+section:hover {
+    transform: translateY(-5px);
+}
+
+section h2 {
+    margin-bottom: 20px;
+    color: #333;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 10px;
+}
+
+/* Buttons */
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: bold;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.btn-record {
+    background: #e74c3c;
+    color: white;
+}
+
+.btn-record:hover {
+    background: #c0392b;
+}
+
+.btn-stop {
+    background: #95a5a6;
+    color: white;
+}
+
+.btn-stop:hover {
+    background: #7f8c8d;
+}
+
+.btn-play {
+    background: #27ae60;
+    color: white;
+}
+
+.btn-play:hover {
+    background: #2ecc71;
+}
+
+.btn-primary {
+    background: #3498db;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #2980b9;
+}
+
+.btn-secondary {
+    background: #9b59b6;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #8e44ad;
+}
+
+/* Record Section */
+.record-controls {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.recording-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#recordingTime {
+    font-weight: bold;
+    color: #e74c3c;
+    font-size: 1.2rem;
+}
+
+.audio-meter {
+    width: 100px;
+    height: 8px;
+    background: #ecf0f1;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.audio-meter::after {
+    content: '';
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, #27ae60, #f1c40f, #e74c3c);
+    width: 0%;
+    transition: width 0.1s ease;
+}
+
+#waveform {
+    width: 100%;
+    max-width: 600px;
+    border: 2px solid #bdc3c7;
+    border-radius: 8px;
+    background: #ecf0f1;
+}
+
+/* Classification Results */
+.results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.beat-element {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.beat-name {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.confidence-bar {
+    height: 20px;
+    background: #ecf0f1;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+}
+
+.confidence-fill {
+    height: 100%;
+    transition: width 0.5s ease;
+    border-radius: 10px;
+}
+
+.kick-fill { background: #e74c3c; }
+.snare-fill { background: #f39c12; }
+.hihat-fill { background: #27ae60; }
+.clap-fill { background: #9b59b6; }
+
+.confidence-text {
+    font-weight: bold;
+    text-align: center;
+}
+
+/* Beat Section */
+.beat-controls {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.tempo-control {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.tempo-control label {
+    font-weight: bold;
+}
+
+#tempoSlider {
+    width: 150px;
+}
+
+/* Beat Pattern Visualizer */
+.beat-pattern {
+    display: grid;
+    gap: 15px;
+}
+
+.pattern-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.pattern-label {
+    width: 80px;
+    font-weight: bold;
+    text-align: right;
+}
+
+.pattern-steps {
+    display: flex;
+    gap: 5px;
+}
+
+.step {
+    width: 30px;
+    height: 30px;
+    border: 2px solid #bdc3c7;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.step.active {
+    background: #3498db;
+    border-color: #2980b9;
+    box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+}
+
+.step.current {
+    transform: scale(1.2);
+    box-shadow: 0 0 15px rgba(52, 152, 219, 0.8);
+}
+
+/* DJ Section */
+.dj-controls {
+    display: grid;
+    gap: 20px;
+}
+
+.prompt-input {
+    display: flex;
+    gap: 10px;
+    align-items: end;
+    flex-wrap: wrap;
+}
+
+.prompt-input label {
+    font-weight: bold;
+    margin-bottom: 5px;
+    display: block;
+    width: 100%;
+}
+
+#djPrompt {
+    flex: 1;
+    min-width: 300px;
+    padding: 12px;
+    border: 2px solid #bdc3c7;
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+#djPrompt:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+.quick-prompts {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.quick-prompts h4 {
+    margin-bottom: 10px;
+}
+
+.quick-prompts > div {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.quick-prompt-btn {
+    padding: 8px 16px;
+    background: #ecf0f1;
+    border: 2px solid #bdc3c7;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+}
+
+.quick-prompt-btn:hover {
+    background: #3498db;
+    color: white;
+    border-color: #2980b9;
+}
+
+/* AI Response */
+.ai-response {
+    background: #f8f9fa;
+    border-left: 4px solid #3498db;
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+}
+
+.ai-response h4 {
+    margin-bottom: 10px;
+    color: #2c3e50;
+}
+
+#aiResponseText {
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    color: white;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid rgba(255, 255, 255, 0.3);
+    border-top: 5px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Footer */
+.footer {
+    text-align: center;
+    margin-top: 40px;
+    color: white;
+    opacity: 0.8;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+    
+    .header h1 {
+        font-size: 2rem;
+    }
+    
+    .record-controls,
+    .beat-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .prompt-input {
+        flex-direction: column;
+    }
+    
+    #djPrompt {
+        min-width: auto;
+    }
+    
+    .results-grid {
+        grid-template-columns: 1fr;
+    }
+}

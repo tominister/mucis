@@ -1,0 +1,29 @@
+# SoundSketch.tech Dependencies
+node_modules/
+.env
+
+# Build outputs
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.temp
+
+# Model files (too large for git)
+models/*.json
+models/*.bin
+!models/README.md
