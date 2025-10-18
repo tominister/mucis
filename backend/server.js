@@ -106,7 +106,7 @@ Response format:
         if (GEMINI_API_KEY) {
             // Make actual Gemini API call
             const response = await axios.post(
-                `${GEMINI_BASE_URL}/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
+                `${GEMINI_BASE_URL}/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
                 {
                     contents: [{
                         parts: [{

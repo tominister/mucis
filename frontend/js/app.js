@@ -14,6 +14,8 @@ class SoundSketchApp {
         this.isInitialized = false;
         this.recordingTimer = null;
         this.recordingStartTime = 0;
+        this.isRamping = false;
+        this.rampInterval = null;
         
         // UI elements
         this.elements = {};
@@ -24,6 +26,7 @@ class SoundSketchApp {
         this.handlePlayBeat = this.handlePlayBeat.bind(this);
         this.handleStopBeat = this.handleStopBeat.bind(this);
         this.handleTempoChange = this.handleTempoChange.bind(this);
+        this.handleRamp = this.handleRamp.bind(this);
         this.handlePromptSubmit = this.handlePromptSubmit.bind(this);
         this.handleQuickPrompt = this.handleQuickPrompt.bind(this);
         this.handleNarrate = this.handleNarrate.bind(this);
@@ -121,6 +124,9 @@ class SoundSketchApp {
             stopBeatBtn: safeGetElement('stopBeatBtn'),
             tempoSlider: safeGetElement('tempoSlider'),
             tempoValue: safeGetElement('tempoValue'),
+            rampBtn: safeGetElement('rampBtn'),
+            rampStartBPM: safeGetElement('rampStartBPM'),
+            rampEndBPM: safeGetElement('rampEndBPM'),
             
             // DJ controls
             djPrompt: safeGetElement('djPrompt'),
@@ -159,6 +165,7 @@ class SoundSketchApp {
         safeAddEventListener(this.elements.playBeatBtn, 'click', this.handlePlayBeat);
         safeAddEventListener(this.elements.stopBeatBtn, 'click', this.handleStopBeat);
         safeAddEventListener(this.elements.tempoSlider, 'input', this.handleTempoChange);
+        safeAddEventListener(this.elements.rampBtn, 'click', this.handleRamp);
         
         // DJ controls
         safeAddEventListener(this.elements.applyPromptBtn, 'click', this.handlePromptSubmit);
@@ -201,6 +208,7 @@ class SoundSketchApp {
                     
                     // Set up audio engine callbacks
                     this.audioEngine.onStepChanged((step) => {
+                        console.log('🎵 Step changed to:', step);
                         this.updateBeatVisualization(step);
                     });
                     
@@ -218,12 +226,6 @@ class SoundSketchApp {
                     if (this.elements.playBeatBtn) {
                         this.elements.playBeatBtn.disabled = false;
                         console.log('✅ Audio ready - Play button enabled!');
-                        
-                        // Visual feedback
-                        this.elements.playBeatBtn.textContent = '▶️ Play Beat (Ready!)';
-                        setTimeout(() => {
-                            this.elements.playBeatBtn.textContent = '▶️ Play Beat';
-                        }, 2000);
                     }
                     
                     audioEngineInitialized = true;
@@ -268,7 +270,7 @@ class SoundSketchApp {
      * Initialize beat pattern visualizer
      */
     initializeBeatPattern() {
-        const instruments = ['kick', 'snare', 'hihat', 'clap'];
+        const instruments = ['kick', 'snare', 'hihat', 'clap', 'bass', 'synth', 'piano'];
         
         instruments.forEach(instrument => {
             const stepsContainer = document.querySelector(`[data-instrument="${instrument}"] .pattern-steps`);
@@ -351,22 +353,59 @@ class SoundSketchApp {
     /**
      * Handle play beat
      */
-    handlePlayBeat() {
+    async handlePlayBeat() {
+        console.log('🎵 Play button clicked - checking state...');
+        console.log('App initialized:', this.isInitialized);
+        console.log('Audio engine initialized:', this.audioEngine?.isInitialized);
+        console.log('Play button disabled:', this.elements.playBeatBtn?.disabled);
+        
         if (!this.isInitialized) {
             console.log('App not initialized yet');
             return;
         }
         
         if (!this.audioEngine.isInitialized) {
-            console.log('Click anywhere to activate audio first!');
-            alert('Click anywhere on the page first to activate audio (Chrome requirement)');
-            return;
+            console.log('Audio not activated yet - activating now...');
+            // Try to activate audio context and initialize engine
+            try {
+                // Start Tone.js audio context
+                await Tone.start();
+                console.log('Audio context activated from play button');
+                
+                // Initialize audio engine
+                await this.audioEngine.init();
+                console.log('Audio engine initialized from play button');
+                
+                // Set up audio engine callbacks
+                this.audioEngine.onStepChanged((step) => {
+                    console.log('🎵 Step changed to:', step);
+                    this.updateBeatVisualization(step);
+                });
+                
+                // Initialize beat pattern visualizer
+                this.initializeBeatPattern();
+                
+                // Enable play button
+                if (this.elements.playBeatBtn) {
+                    this.elements.playBeatBtn.disabled = false;
+                }
+                
+            } catch (error) {
+                console.error('Failed to activate audio:', error);
+                alert('Failed to activate audio. Please try clicking elsewhere on the page first.');
+                return;
+            }
         }
         
         try {
-            this.audioEngine.play();
-            if (this.elements.playBeatBtn) this.elements.playBeatBtn.disabled = true;
-            if (this.elements.stopBeatBtn) this.elements.stopBeatBtn.disabled = false;
+            const success = this.audioEngine.play();
+            if (success) {
+                if (this.elements.playBeatBtn) this.elements.playBeatBtn.disabled = true;
+                if (this.elements.stopBeatBtn) this.elements.stopBeatBtn.disabled = false;
+                console.log('✅ Beat started, buttons updated');
+            } else {
+                console.error('❌ Failed to start beat');
+            }
         } catch (error) {
             console.error('Error playing beat:', error);
             alert('Error playing beat. Try clicking anywhere to activate audio first.');
@@ -377,22 +416,44 @@ class SoundSketchApp {
      * Handle stop beat
      */
     handleStopBeat() {
+        console.log('⏹️ Stop button clicked - stopping beat...');
+        
         try {
             if (this.audioEngine && this.audioEngine.isInitialized) {
-                this.audioEngine.stop();
+                const success = this.audioEngine.stop();
+                console.log('Audio engine stop result:', success);
             }
             
-            // Always re-enable play button
-            if (this.elements.playBeatBtn) this.elements.playBeatBtn.disabled = false;
-            if (this.elements.stopBeatBtn) this.elements.stopBeatBtn.disabled = true;
+            // Stop any active ramping
+            this.stopRamp();
+            if (this.elements.rampBtn) {
+                this.elements.rampBtn.textContent = '📈 Ramp';
+            }
+            
+            // Always re-enable play button regardless of audio engine state
+            if (this.elements.playBeatBtn) {
+                this.elements.playBeatBtn.disabled = false;
+                console.log('✅ Play button re-enabled');
+            }
+            if (this.elements.stopBeatBtn) {
+                this.elements.stopBeatBtn.disabled = true;
+                console.log('✅ Stop button disabled');
+            }
             
             // Reset visualization
             this.updateBeatVisualization(-1);
+            console.log('✅ Beat stopped and buttons reset');
+            
         } catch (error) {
             console.error('Error stopping beat:', error);
             // Still re-enable buttons even if there's an error
-            if (this.elements.playBeatBtn) this.elements.playBeatBtn.disabled = false;
-            if (this.elements.stopBeatBtn) this.elements.stopBeatBtn.disabled = true;
+            if (this.elements.playBeatBtn) {
+                this.elements.playBeatBtn.disabled = false;
+                console.log('✅ Play button force-enabled after error');
+            }
+            if (this.elements.stopBeatBtn) {
+                this.elements.stopBeatBtn.disabled = true;
+            }
         }
     }
 
@@ -408,6 +469,86 @@ class SoundSketchApp {
         if (this.audioEngine.isInitialized) {
             this.audioEngine.setTempo(tempo);
         }
+    }
+
+    /**
+     * Handle BPM ramping
+     */
+    handleRamp() {
+        if (!this.audioEngine.isInitialized) {
+            alert('Audio not initialized yet!');
+            return;
+        }
+
+        const startBPM = parseInt(this.elements.rampStartBPM.value);
+        const endBPM = parseInt(this.elements.rampEndBPM.value);
+
+        if (isNaN(startBPM) || isNaN(endBPM) || startBPM < 60 || endBPM < 60 || startBPM > 200 || endBPM > 200) {
+            alert('Please enter valid BPM values (60-200)');
+            return;
+        }
+
+        if (this.isRamping) {
+            this.stopRamp();
+            this.elements.rampBtn.textContent = '📈 Ramp';
+            return;
+        }
+
+        this.startRamp(startBPM, endBPM);
+        this.elements.rampBtn.textContent = '⏹️ Stop Ramp';
+    }
+
+    /**
+     * Start BPM ramping
+     */
+    startRamp(startBPM, endBPM) {
+        console.log(`Starting BPM ramp from ${startBPM} to ${endBPM}`);
+
+        this.isRamping = true;
+        const duration = 30000; // 30 seconds ramp
+        const steps = 60; // Update every 0.5 seconds
+        const stepDuration = duration / steps;
+        const bpmIncrement = (endBPM - startBPM) / steps;
+
+        let currentStep = 0;
+        let currentBPM = startBPM;
+
+        this.rampInterval = setInterval(() => {
+            if (!this.isRamping) return;
+
+            // Update BPM
+            this.audioEngine.setTempo(Math.round(currentBPM));
+
+            // Update UI
+            if (this.elements.tempoSlider) {
+                this.elements.tempoSlider.value = Math.round(currentBPM);
+            }
+            if (this.elements.tempoValue) {
+                this.elements.tempoValue.textContent = Math.round(currentBPM);
+            }
+
+            currentStep++;
+            currentBPM += bpmIncrement;
+
+            // Stop ramping when we reach the end
+            if (currentStep >= steps) {
+                this.stopRamp();
+                this.elements.rampBtn.textContent = '📈 Ramp';
+                console.log('BPM ramp completed');
+            }
+        }, stepDuration);
+    }
+
+    /**
+     * Stop BPM ramping
+     */
+    stopRamp() {
+        this.isRamping = false;
+        if (this.rampInterval) {
+            clearInterval(this.rampInterval);
+            this.rampInterval = null;
+        }
+        console.log('BPM ramp stopped');
     }
 
     /**

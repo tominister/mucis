@@ -53,7 +53,7 @@ class AIClassifier {
         } catch (error) {
             console.error('Failed to initialize AI classifier:', error);
             // Fallback: Use mock classification for demo
-            this.setupMockClassifier();
+            await this.setupMockClassifier();
             return false;
         }
     }
@@ -77,16 +77,24 @@ class AIClassifier {
         } catch (error) {
             console.log('📝 No custom model found - using built-in demo classifier (this is normal!)');
             console.log('💡 To train your own model, visit: https://teachablemachine.withgoogle.com/train/audio');
-            this.setupMockClassifier();
+            await this.setupMockClassifier();
         }
     }
 
     /**
      * Set up mock classifier for demo purposes
      */
-    setupMockClassifier() {
+    async setupMockClassifier() {
         this.isModelLoaded = false;
         console.log('Using mock classifier for demo');
+        
+        // Still need to set up audio recording even in mock mode
+        try {
+            await this.setupAudioRecording();
+            console.log('Mock classifier with audio recording ready');
+        } catch (error) {
+            console.error('Failed to setup audio recording for mock classifier:', error);
+        }
     }
 
     /**

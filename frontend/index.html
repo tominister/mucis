@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SoundSketch.tech - AI Beat Creation</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="styles.css">
     
     <!-- External Libraries -->
@@ -15,8 +16,10 @@
     <div class="container">
         <!-- Header -->
         <header class="header">
-            <h1>🎵 SoundSketch.tech</h1>
-            <p>Transform your beatbox into AI-powered music</p>
+            <div class="stars-bg"></div>
+            <h1>🚀 SoundSketch.tech</h1>
+            <p>AI-Powered Beat Creation from the Cosmos</p>
+            <div class="hacktx-badge">⭐ HackTX 2025 - Celestial Theme ⭐</div>
         </header>
 
         <!-- Main Interface -->
@@ -74,37 +77,64 @@
             <section class="beat-section">
                 <h2>🎵 Step 3: Your Generated Beat</h2>
                 <div class="beat-controls">
-                    <button id="playBeatBtn" class="btn btn-play" disabled>▶️ Play Beat</button>
+                    <button id="playBeatBtn" class="btn btn-play" disabled>☀️ Play Beat</button>
                     <button id="stopBeatBtn" class="btn btn-stop" disabled>⏹️ Stop</button>
                     <div class="tempo-control">
                         <label for="tempoSlider">BPM: <span id="tempoValue">120</span></label>
                         <input type="range" id="tempoSlider" min="80" max="180" value="120">
                     </div>
+                    
+                    <!-- BPM Ramp Controls -->
+                    <div class="ramp-controls">
+                        <label>Ramp BPM:</label>
+                        <input type="number" id="rampStartBPM" min="60" max="200" value="100" step="5" placeholder="Start">
+                        <span>to</span>
+                        <input type="number" id="rampEndBPM" min="60" max="200" value="160" step="5" placeholder="End">
+                        <button id="rampBtn" class="btn btn-ramp">☄️ Ramp</button>
+                    </div>
                 </div>
                 
                 <!-- Beat Pattern Visualizer -->
                 <div class="beat-pattern">
-                    <div class="pattern-row">
-                        <span class="pattern-label">Kick:</span>
-                        <div class="pattern-steps" data-instrument="kick">
+                    <div class="pattern-row" data-instrument="kick">
+                        <span class="pattern-label">⚫ Kick (Mercury):</span>
+                        <div class="pattern-steps">
                             <!-- Will be populated by JavaScript -->
                         </div>
                     </div>
-                    <div class="pattern-row">
-                        <span class="pattern-label">Snare:</span>
-                        <div class="pattern-steps" data-instrument="snare">
+                    <div class="pattern-row" data-instrument="snare">
+                        <span class="pattern-label">⭐ Snare (Venus):</span>
+                        <div class="pattern-steps">
                             <!-- Will be populated by JavaScript -->
                         </div>
                     </div>
-                    <div class="pattern-row">
-                        <span class="pattern-label">Hi-Hat:</span>
-                        <div class="pattern-steps" data-instrument="hihat">
+                    <div class="pattern-row" data-instrument="hihat">
+                        <span class="pattern-label">🌍 Hi-Hat (Earth):</span>
+                        <div class="pattern-steps">
                             <!-- Will be populated by JavaScript -->
                         </div>
                     </div>
-                    <div class="pattern-row">
-                        <span class="pattern-label">Clap:</span>
-                        <div class="pattern-steps" data-instrument="clap">
+                    <div class="pattern-row" data-instrument="clap">
+                        <span class="pattern-label">🔴 Clap (Mars):</span>
+                        <div class="pattern-steps">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                    </div>
+                    <div class="pattern-row" data-instrument="bass">
+                        <span class="pattern-label">🟠 Bass (Jupiter):</span>
+                        <div class="pattern-steps">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                    </div>
+                    <div class="pattern-row" data-instrument="synth">
+                        <span class="pattern-label">🪐 Synth (Saturn):</span>
+                        <div class="pattern-steps">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                    </div>
+                    <div class="pattern-row" data-instrument="piano">
+                        <span class="pattern-label">🔵 Piano (Uranus):</span>
+                        <div class="pattern-steps">
                             <!-- Will be populated by JavaScript -->
                         </div>
                     </div>
@@ -123,11 +153,13 @@
                     
                     <div class="quick-prompts">
                         <h4>Quick Prompts:</h4>
-                        <button class="quick-prompt-btn" data-prompt="add more hi-hats">🎩 More Hi-Hats</button>
-                        <button class="quick-prompt-btn" data-prompt="make it bouncy">🏀 Make it Bouncy</button>
-                        <button class="quick-prompt-btn" data-prompt="add 808 bass">🔊 Add 808s</button>
-                        <button class="quick-prompt-btn" data-prompt="make it lo-fi">📻 Lo-Fi Style</button>
-                        <button class="quick-prompt-btn" data-prompt="double the tempo">⚡ Double Tempo</button>
+                        <div class="quick-prompts-grid">
+                            <button class="quick-prompt-btn" data-prompt="add more hi-hats">🎩 More Hi-Hats</button>
+                            <button class="quick-prompt-btn" data-prompt="make it bouncy">🏀 Make it Bouncy</button>
+                            <button class="quick-prompt-btn" data-prompt="add 808 bass">🔊 Add 808s</button>
+                            <button class="quick-prompt-btn" data-prompt="make it lo-fi">📻 Lo-Fi Style</button>
+                            <button class="quick-prompt-btn" data-prompt="double the tempo">⚡ Double Tempo</button>
+                        </div>
                     </div>
                 </div>
 
@@ -145,7 +177,8 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>Built with ❤️ for hackathons | Powered by Gemini 2.5, ElevenLabs, Tone.js & TensorFlow.js</p>
+            <p>Built with ❤️ for <strong>HackTX 2025</strong> | Powered by <span style="color: #ffd700;">Gemini 2.0 Flash</span>, <span style="color: #00f2fe;">ElevenLabs</span>, <span style="color: #ff6b6b;">Tone.js</span> & <span style="color: #4ecdc4;">TensorFlow.js</span></p>
+            <p style="margin-top: 10px; font-size: 0.9rem;">🌌 Celestial Theme Winner - Bringing the Universe to Music Creation 🌌</p>
         </footer>
     </div>
 

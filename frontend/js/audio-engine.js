@@ -16,12 +16,16 @@ class AudioEngine {
             kick: new Array(16).fill(false),
             snare: new Array(16).fill(false),
             hihat: new Array(16).fill(false),
-            clap: new Array(16).fill(false)
+            clap: new Array(16).fill(false),
+            bass: new Array(16).fill(false),
+            synth: new Array(16).fill(false),
+            piano: new Array(16).fill(false)
         };
         
         // Tone.js components
         this.instruments = {};
         this.sequence = null;
+        this.sequenceId = null; // For scheduleRepeat
         this.transport = Tone.Transport;
         
         // Callbacks
@@ -47,6 +51,9 @@ class AudioEngine {
             // Set initial tempo
             this.setTempo(this.bpm);
             
+            // Set a default pattern so there's always something to play
+            this.setDefaultPattern();
+            
             this.isInitialized = true;
             console.log('Audio engine initialized successfully');
             
@@ -54,6 +61,34 @@ class AudioEngine {
             console.error('Failed to initialize audio engine:', error);
             throw error;
         }
+    }
+
+    /**
+     * Set a default beat pattern so there's always something to play
+     */
+    setDefaultPattern() {
+        // Basic 4-on-the-floor kick pattern
+        this.updatePattern('kick', [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false]);
+        
+        // Basic snare on 2 and 4
+        this.updatePattern('snare', [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false]);
+        
+        // Hi-hats on off-beats
+        this.updatePattern('hihat', [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false]);
+        
+        // Occasional claps
+        this.updatePattern('clap', [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false]);
+        
+        // Simple bass line
+        this.updatePattern('bass', [true, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false]);
+        
+        // Sparse synth melody
+        this.updatePattern('synth', [false, false, false, false, false, false, true, false, false, false, false, false, false, false, true, false]);
+        
+        // Piano accents
+        this.updatePattern('piano', [false, false, true, false, false, false, false, false, false, false, true, false, false, false, false, false]);
+        
+        console.log('Default beat pattern set');
     }
 
     /**
@@ -154,29 +189,112 @@ class AudioEngine {
             }
         }).toDestination();
 
-        console.log('Instruments created successfully');
+        // Bass - sub-bass synth for basslines
+        this.instruments.bass = new Tone.MonoSynth({
+            oscillator: {
+                type: "sawtooth"
+            },
+            filter: {
+                Q: 1,
+                type: "lowpass",
+                rolloff: -12
+            },
+            filterEnvelope: {
+                attack: 0.02,
+                decay: 0.1,
+                sustain: 0.8,
+                release: 0.2,
+                baseFrequency: 100,
+                octaves: 3
+            },
+            envelope: {
+                attack: 0.01,
+                decay: 0.1,
+                sustain: 0.7,
+                release: 0.3
+            }
+        }).toDestination();
+
+        // Synth - lead synthesizer
+        this.instruments.synth = new Tone.Synth({
+            oscillator: {
+                type: "sawtooth"
+            },
+            envelope: {
+                attack: 0.01,
+                decay: 0.2,
+                sustain: 0.3,
+                release: 0.8
+            },
+            filter: {
+                Q: 2,
+                type: "lowpass",
+                rolloff: -12
+            },
+            filterEnvelope: {
+                attack: 0.1,
+                decay: 0.3,
+                sustain: 0.4,
+                release: 0.8,
+                baseFrequency: 300,
+                octaves: 3
+            }
+        }).toDestination();
+
+        // Piano - acoustic piano samples
+        this.instruments.piano = new Tone.Sampler({
+            urls: {
+                C4: "C4.mp3",
+                D4: "D4.mp3",
+                E4: "E4.mp3",
+                F4: "F4.mp3",
+                G4: "G4.mp3",
+                A4: "A4.mp3",
+                B4: "B4.mp3",
+                C5: "C5.mp3"
+            },
+            baseUrl: "https://tonejs.github.io/audio/salamander/",
+            onload: () => {
+                console.log('Piano samples loaded');
+            }
+        }).toDestination();
+
+        console.log('All instruments created successfully');
     }
 
     /**
      * Set up the step sequencer
      */
     setupSequencer() {
-        this.sequence = new Tone.Sequence((time, step) => {
-            this.currentStep = step;
+        console.log('Setting up sequencer with scheduleRepeat...');
+        
+        // Clear any existing scheduled events
+        if (this.sequenceId) {
+            this.transport.clear(this.sequenceId);
+        }
+        
+        // Schedule a callback every 16th note
+        this.sequenceId = this.transport.scheduleRepeat((time) => {
+            console.log('🎼 ScheduleRepeat callback fired for step:', this.currentStep, 'at time:', time);
             
             // Trigger instruments based on pattern
             Object.keys(this.patterns).forEach(instrument => {
-                if (this.patterns[instrument][step]) {
+                if (this.patterns[instrument][this.currentStep]) {
                     this.triggerInstrument(instrument, time);
                 }
             });
             
             // Notify UI of step change
             if (this.onStepChange) {
-                this.onStepChange(step);
+                console.log('🔄 Calling onStepChange with step:', this.currentStep);
+                this.onStepChange(this.currentStep);
+            } else {
+                console.log('⚠️ onStepChange callback not set, step:', this.currentStep);
             }
             
-        }, Array.from({length: this.stepCount}, (_, i) => i), "16n");
+            // Move to next step
+            this.currentStep = (this.currentStep + 1) % this.stepCount;
+        }, "16n");
     }
 
     /**
@@ -198,6 +316,24 @@ class AudioEngine {
             case 'clap':
                 this.instruments.clap.triggerAttackRelease("8n", time);
                 break;
+            case 'bass':
+                // Bass notes in a simple pattern
+                const bassNotes = ["C2", "G2", "F2", "A2"];
+                const bassNote = bassNotes[this.currentStep % bassNotes.length];
+                this.instruments.bass.triggerAttackRelease(bassNote, "8n", time);
+                break;
+            case 'synth':
+                // Synth melody notes
+                const synthNotes = ["C4", "E4", "G4", "B4", "D5", "F5"];
+                const synthNote = synthNotes[this.currentStep % synthNotes.length];
+                this.instruments.synth.triggerAttackRelease(synthNote, "8n", time);
+                break;
+            case 'piano':
+                // Piano chord notes
+                const pianoNotes = ["C4", "E4", "G4", "C5"];
+                const pianoNote = pianoNotes[this.currentStep % pianoNotes.length];
+                this.instruments.piano.triggerAttackRelease(pianoNote, "8n", time);
+                break;
         }
     }
 
@@ -211,16 +347,35 @@ class AudioEngine {
         }
         
         try {
+            // Ensure audio context is running
+            if (Tone.context.state !== 'running') {
+                console.log('Resuming audio context...');
+                Tone.context.resume();
+            }
+            
             // Stop first to ensure clean state
             if (this.isPlaying) {
                 this.stop();
             }
             
-            // Restart the sequence from the beginning
-            this.sequence.start(0);
-            this.transport.start();
+            // Ensure transport is completely stopped before restarting
+            this.transport.stop();
+            this.transport.cancel();
+            
+            // Reset transport position to beginning
+            this.transport.position = 0;
+            this.transport.seconds = 0;
+            this.currentStep = 0;
+            
+            // Set up the sequencer (schedules the callback)
+            this.setupSequencer();
+            
+            // Start transport fresh
+            this.transport.start("+0"); // Start immediately
             this.isPlaying = true;
-            console.log('Beat started');
+            console.log('Beat started from position 0');
+            console.log('Transport state:', this.transport.state);
+            console.log('Using scheduleRepeat for sequencing');
             return true;
         } catch (error) {
             console.error('Error starting beat:', error);
@@ -233,16 +388,21 @@ class AudioEngine {
      */
     stop() {
         try {
-            if (this.sequence) {
-                this.sequence.stop();
+            // Clear the scheduled sequence
+            if (this.sequenceId) {
+                this.transport.clear(this.sequenceId);
+                this.sequenceId = null;
             }
-            if (this.transport) {
-                this.transport.stop();
-                this.transport.cancel(); // Cancel any scheduled events
-            }
+            
+            // Stop transport completely
+            this.transport.stop();
+            this.transport.cancel(); // Cancel any scheduled events
+            this.transport.position = 0; // Reset position
+            this.transport.seconds = 0; // Reset seconds
+            
             this.isPlaying = false;
             this.currentStep = 0;
-            console.log('Beat stopped');
+            console.log('Beat stopped and transport reset completely');
             return true;
         } catch (error) {
             console.error('Error stopping beat:', error);
@@ -283,7 +443,10 @@ class AudioEngine {
             kick: new Array(16).fill(false),
             snare: new Array(16).fill(false),
             hihat: new Array(16).fill(false),
-            clap: new Array(16).fill(false)
+            clap: new Array(16).fill(false),
+            bass: new Array(16).fill(false),
+            synth: new Array(16).fill(false),
+            piano: new Array(16).fill(false)
         };
 
         // Generate kick pattern based on classification confidence
@@ -332,6 +495,34 @@ class AudioEngine {
                 patterns.clap[6] = true;
                 patterns.clap[14] = true;
             }
+        }
+
+        // Generate bass pattern (complements kick)
+        if (classification.kick > 0.2) {
+            // Bass on downbeats, but less frequently than kick
+            patterns.bass[0] = Math.random() > 0.3;
+            patterns.bass[4] = Math.random() > 0.5;
+            patterns.bass[8] = Math.random() > 0.3;
+            patterns.bass[12] = Math.random() > 0.5;
+        }
+
+        // Generate synth pattern (melodic elements)
+        if (classification.hihat > 0.3 || classification.snare > 0.3) {
+            // Add some melodic interest
+            for (let i = 0; i < 16; i += 4) {
+                if (Math.random() > 0.7) {
+                    patterns.synth[i] = true;
+                }
+            }
+        }
+
+        // Generate piano pattern (harmonic elements)
+        if (classification.clap > 0.5) {
+            // Piano on some off-beats for harmony
+            patterns.piano[2] = Math.random() > 0.6;
+            patterns.piano[6] = Math.random() > 0.6;
+            patterns.piano[10] = Math.random() > 0.6;
+            patterns.piano[14] = Math.random() > 0.6;
         }
 
         // Update all patterns
