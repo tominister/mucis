@@ -138,9 +138,13 @@ class SoundSketchApp {
             aiResponseText: safeGetElement('aiResponseText'),
             narrationPlayer: safeGetElement('narrationPlayer'),
             
-            // Producer tag
-            producerTag: safeGetElement('producerTag'),
-            generateTagBtn: safeGetElement('generateTagBtn'),
+            // Sample selectors
+            kickSelector: safeGetElement('kickSelector'),
+            snareSelector: safeGetElement('snareSelector'),
+            hihatSelector: safeGetElement('hihatSelector'),
+            clapSelector: safeGetElement('clapSelector'),
+            cymbalSelector: safeGetElement('cymbalSelector'),
+            percSelector: safeGetElement('percSelector'),
             
             // Loading
             loadingOverlay: safeGetElement('loadingOverlay'),
@@ -186,12 +190,27 @@ class SoundSketchApp {
             });
         }
         
-        // Producer tag
-        safeAddEventListener(this.elements.generateTagBtn, 'click', this.handleGenerateTag);
-        safeAddEventListener(this.elements.producerTag, 'keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.handleGenerateTag();
-            }
+        // Narration
+        safeAddEventListener(this.elements.narrateBtn, 'click', this.handleNarrate);
+        
+        // Sample selectors
+        safeAddEventListener(this.elements.kickSelector, 'change', (e) => {
+            this.handleSampleChange('kick', e.target.value);
+        });
+        safeAddEventListener(this.elements.snareSelector, 'change', (e) => {
+            this.handleSampleChange('snare', e.target.value);
+        });
+        safeAddEventListener(this.elements.hihatSelector, 'change', (e) => {
+            this.handleSampleChange('hihat', e.target.value);
+        });
+        safeAddEventListener(this.elements.clapSelector, 'change', (e) => {
+            this.handleSampleChange('clap', e.target.value);
+        });
+        safeAddEventListener(this.elements.cymbalSelector, 'change', (e) => {
+            this.handleSampleChange('cymbal', e.target.value);
+        });
+        safeAddEventListener(this.elements.percSelector, 'change', (e) => {
+            this.handleSampleChange('perc', e.target.value);
         });
     }
 
@@ -274,7 +293,7 @@ class SoundSketchApp {
      * Initialize beat pattern visualizer
      */
     initializeBeatPattern() {
-        const instruments = ['kick', 'snare', 'hihat', 'clap'];
+        const instruments = ['kick', 'snare', 'hihat', 'clap', 'cymbal', 'perc'];
         
         instruments.forEach(instrument => {
             const stepsContainer = document.querySelector(`[data-instrument="${instrument}"] .pattern-steps`);
@@ -831,6 +850,33 @@ class SoundSketchApp {
         
         // Auto-remove after 10 seconds
         setTimeout(removeNotification, 10000);
+    }
+
+    /**
+     * Handle sample change from dropdown
+     */
+    async handleSampleChange(instrument, filename) {
+        try {
+            console.log(`Changing ${instrument} sample to: ${filename}`);
+            
+            // Show loading indicator
+            this.showLoading(`Loading ${instrument} sample...`);
+            
+            // Change the sample in audio engine
+            const success = await this.audioEngine.changeSample(instrument, filename);
+            
+            if (success) {
+                console.log(` ${instrument} sample changed successfully`);
+            } else {
+                console.error(` Failed to change ${instrument} sample`);
+            }
+            
+            this.hideLoading();
+        } catch (error) {
+            console.error(`Error changing ${instrument} sample:`, error);
+            this.hideLoading();
+            this.showError(`Failed to load ${instrument} sample`);
+        }
     }
 
     /**

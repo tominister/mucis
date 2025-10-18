@@ -16,7 +16,9 @@ class AudioEngine {
             kick: new Array(16).fill(false),
             snare: new Array(16).fill(false),
             hihat: new Array(16).fill(false),
-            clap: new Array(16).fill(false)
+            clap: new Array(16).fill(false),
+            cymbal: new Array(16).fill(false),
+            perc: new Array(16).fill(false)
         };
         
         // Tone.js components
@@ -79,6 +81,12 @@ class AudioEngine {
         // Occasional claps
         this.updatePattern('clap', [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false]);
         
+        // Cymbal accents
+        this.updatePattern('cymbal', [true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]);
+        
+        // Percussion texture
+        this.updatePattern('perc', [false, true, false, false, false, true, false, false, false, true, false, false, false, true, false, false]);
+        
         console.log('Default beat pattern set');
     }
 
@@ -130,6 +138,28 @@ class AudioEngine {
             }
         }).toDestination();
 
+        // Cymbal - using actual sample
+        this.instruments.cymbal = new Tone.Player({
+            url: "../drumset/cymbal/cym1.wav",
+            onload: () => {
+                console.log('✅ Cymbal sample loaded');
+            },
+            onerror: (error) => {
+                console.error('❌ Failed to load cymbal sample:', error);
+            }
+        }).toDestination();
+
+        // Perc - using actual sample
+        this.instruments.perc = new Tone.Player({
+            url: "../drumset/perc/perc1.wav",
+            onload: () => {
+                console.log('✅ Perc sample loaded');
+            },
+            onerror: (error) => {
+                console.error('❌ Failed to load perc sample:', error);
+            }
+        }).toDestination();
+
         // Wait for all samples to load
         try {
             await Tone.loaded();
@@ -138,7 +168,7 @@ class AudioEngine {
             console.error('❌ Error loading drum samples:', error);
         }
 
-        console.log('All instruments created successfully');
+        console.log('All drum instruments created successfully');
     }
 
     /**
@@ -246,6 +276,22 @@ class AudioEngine {
                         this.instruments.clap.stop();
                     }
                     this.instruments.clap.start(time);
+                }
+                break;
+            case 'cymbal':
+                if (this.instruments.cymbal.loaded) {
+                    if (this.instruments.cymbal.state === 'started') {
+                        this.instruments.cymbal.stop();
+                    }
+                    this.instruments.cymbal.start(time);
+                }
+                break;
+            case 'perc':
+                if (this.instruments.perc.loaded) {
+                    if (this.instruments.perc.state === 'started') {
+                        this.instruments.perc.stop();
+                    }
+                    this.instruments.perc.start(time);
                 }
                 break;
         }
@@ -390,7 +436,9 @@ class AudioEngine {
             kick: new Array(16).fill(false),
             snare: new Array(16).fill(false),
             hihat: new Array(16).fill(false),
-            clap: new Array(16).fill(false)
+            clap: new Array(16).fill(false),
+            cymbal: new Array(16).fill(false),
+            perc: new Array(16).fill(false)
         };
 
         // Generate kick pattern based on classification confidence
@@ -440,6 +488,35 @@ class AudioEngine {
                 patterns.clap[14] = true;
             }
         }
+
+        // Generate cymbal pattern (accents and transitions)
+        if (classification.hihat > 0.4 || classification.snare > 0.4) {
+            // Cymbal crashes on major transitions
+            patterns.cymbal[0] = Math.random() > 0.7;
+            patterns.cymbal[8] = Math.random() > 0.6;
+            
+            if (classification.hihat > 0.6) {
+                patterns.cymbal[15] = true; // Crash before loop
+            }
+        }
+
+        // Generate perc pattern (adds texture)
+        if (classification.hihat > 0.3 || classification.clap > 0.3) {
+            // Percussion on off-beats for texture
+            for (let i = 1; i < 16; i += 4) {
+                patterns.perc[i] = Math.random() > 0.6;
+            }
+            
+            if (classification.clap > 0.5) {
+                patterns.perc[3] = true;
+                patterns.perc[11] = true;
+            }
+        }
+
+        // Update all patterns
+        Object.keys(patterns).forEach(instrument => {
+            this.updatePattern(instrument, patterns[instrument]);
+        });
 
         console.log('Generated patterns from classification:', patterns);
         return patterns;
@@ -500,17 +577,137 @@ class AudioEngine {
 
     /**
      * Set step change callback
-     */
-    onStepChanged(callback) {
-        this.onStepChange = callback;
-    }
 
-    /**
-     * Set pattern update callback
-     */
-    onPatternUpdated(callback) {
-        this.onPatternUpdate = callback;
-    }
+console.log('Generated patterns from classification:', patterns);
+return patterns;
+}
+
+/**
+* Apply DJ modifications to the current pattern
+*/
+applyDJModifications(modifications) {
+try {
+console.log('Applying DJ modifications:', modifications);
+
+// Parse and apply modifications
+Object.keys(modifications).forEach(instrument => {
+if (modifications[instrument] && Array.isArray(modifications[instrument])) {
+this.updatePattern(instrument, modifications[instrument]);
+}
+});
+
+// Apply tempo changes if specified
+if (modifications.tempo) {
+this.setTempo(modifications.tempo);
+}
+
+return true;
+} catch (error) {
+console.error('Error applying DJ modifications:', error);
+return false;
+}
+}
+
+/**
+* Get current patterns
+*/
+getPatterns() {
+return { ...this.patterns };
+}
+
+/**
+* Get current state
+*/
+getState() {
+return {
+isInitialized: this.isInitialized,
+isPlaying: this.isPlaying,
+currentStep: this.currentStep,
+bpm: this.bpm,
+patterns: this.getPatterns()
+};
+}
+
+/**
+* Preview a single instrument sound
+*/
+previewInstrument(instrument) {
+this.triggerInstrument(instrument);
+}
+
+/**
+* Set step change callback
+*/
+onStepChanged(callback) {
+this.onStepChange = callback;
+}
+
+/**
+* Set pattern update callback
+*/
+onPatternUpdated(callback) {
+this.onPatternUpdate = callback;
+}
+
+/**
+* Change drum sample for a specific instrument
+*/
+async changeSample(instrument, filename) {
+try {
+console.log(`Changing ${instrument} sample to: ${filename}`);
+
+// Dispose of old player
+if (this.instruments[instrument]) {
+this.instruments[instrument].dispose();
+}
+
+// Create path based on instrument type
+let path = '';
+switch(instrument) {
+case 'kick':
+path = `../drumset/kick/${filename}`;
+break;
+case 'snare':
+path = `../drumset/snare/${filename}`;
+break;
+case 'hihat':
+path = `../drumset/hat/${filename}`;
+break;
+case 'clap':
+path = `../drumset/clap/${filename}`;
+break;
+case 'cymbal':
+path = `../drumset/cymbal/${filename}`;
+break;
+case 'perc':
+path = `../drumset/perc/${filename}`;
+break;
+default:
+console.error('Unknown instrument:', instrument);
+return false;
+}
+
+// Create new player
+this.instruments[instrument] = new Tone.Player({
+url: path,
+onload: () => {
+console.log(` ${instrument} sample loaded: ${filename}`);
+},
+onerror: (error) => {
+console.error(` Failed to load ${instrument} sample:`, error);
+}
+}).toDestination();
+
+// Wait for sample to load
+await Tone.loaded();
+console.log(` ${instrument} sample changed successfully`);
+return true;
+
+} catch (error) {
+console.error(`Error changing ${instrument} sample:`, error);
+return false;
+}
+}
 }
 
 // Export for use in other modules
