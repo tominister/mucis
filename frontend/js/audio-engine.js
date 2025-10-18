@@ -42,8 +42,8 @@ class AudioEngine {
             await Tone.start();
             console.log('Audio context started');
 
-            // Create drum instruments
-            this.createInstruments();
+            // Create drum instruments (now async)
+            await this.createInstruments();
             
             // Set up sequencer
             this.setupSequencer();
@@ -94,100 +94,58 @@ class AudioEngine {
     /**
      * Create drum sound instruments
      */
-    createInstruments() {
-        // Kick drum - low frequency sine wave with envelope
-        this.instruments.kick = new Tone.MembraneSynth({
-            pitchDecay: 0.05,
-            octaves: 10,
-            oscillator: {
-                type: "sine"
+    async createInstruments() {
+        // Kick drum - using actual sample
+        this.instruments.kick = new Tone.Player({
+            url: "../drumset/kick/ZEN_ALL_kick_one_shot_smooth.wav",
+            onload: () => {
+                console.log('✅ Kick sample loaded');
             },
-            envelope: {
-                attack: 0.001,
-                decay: 0.4,
-                sustain: 0.01,
-                release: 1.4,
-                attackCurve: "exponential"
+            onerror: (error) => {
+                console.error('❌ Failed to load kick sample:', error);
             }
         }).toDestination();
 
-        // Snare drum - noise with filter
-        this.instruments.snare = new Tone.NoiseSynth({
-            noise: {
-                type: "white"
+        // Snare drum - using actual sample
+        this.instruments.snare = new Tone.Player({
+            url: "../drumset/snare/reddot_snare.wav.wav",
+            onload: () => {
+                console.log('✅ Snare sample loaded');
             },
-            envelope: {
-                attack: 0.005,
-                decay: 0.1,
-                sustain: 0.0,
-                release: 0.1
-            },
-            filter: {
-                Q: 1,
-                type: "highpass",
-                rolloff: -12
-            },
-            filterEnvelope: {
-                attack: 0.005,
-                decay: 0.1,
-                sustain: 0.0,
-                release: 0.1,
-                baseFrequency: 200,
-                octaves: 2
+            onerror: (error) => {
+                console.error('❌ Failed to load snare sample:', error);
             }
         }).toDestination();
 
-        // Hi-hat - high frequency noise
-        this.instruments.hihat = new Tone.NoiseSynth({
-            noise: {
-                type: "white"
+        // Hi-hat - using actual sample
+        this.instruments.hihat = new Tone.Player({
+            url: "../drumset/hat/hat_invention.wav.wav",
+            onload: () => {
+                console.log('✅ Hi-hat sample loaded');
             },
-            envelope: {
-                attack: 0.001,
-                decay: 0.05,
-                sustain: 0.0,
-                release: 0.05
-            },
-            filter: {
-                Q: 1,
-                type: "highpass",
-                rolloff: -12
-            },
-            filterEnvelope: {
-                attack: 0.001,
-                decay: 0.05,
-                sustain: 0.0,
-                release: 0.05,
-                baseFrequency: 4000,
-                octaves: 1
+            onerror: (error) => {
+                console.error('❌ Failed to load hi-hat sample:', error);
             }
         }).toDestination();
 
-        // Clap - multiple short noise bursts
-        this.instruments.clap = new Tone.NoiseSynth({
-            noise: {
-                type: "white"
+        // Clap - using actual sample
+        this.instruments.clap = new Tone.Player({
+            url: "../drumset/clap/DS_VTH2_drum_clap_one_shot_edge.wav",
+            onload: () => {
+                console.log('✅ Clap sample loaded');
             },
-            envelope: {
-                attack: 0.005,
-                decay: 0.1,
-                sustain: 0.0,
-                release: 0.1
-            },
-            filter: {
-                Q: 5,
-                type: "bandpass",
-                rolloff: -12
-            },
-            filterEnvelope: {
-                attack: 0.005,
-                decay: 0.1,
-                sustain: 0.0,
-                release: 0.1,
-                baseFrequency: 1000,
-                octaves: 1
+            onerror: (error) => {
+                console.error('❌ Failed to load clap sample:', error);
             }
         }).toDestination();
+
+        // Wait for all samples to load
+        try {
+            await Tone.loaded();
+            console.log('✅ All drum samples loaded successfully');
+        } catch (error) {
+            console.error('❌ Error loading drum samples:', error);
+        }
 
         // Bass - sub-bass synth for basslines
         this.instruments.bass = new Tone.MonoSynth({
@@ -305,16 +263,37 @@ class AudioEngine {
         
         switch (instrument) {
             case 'kick':
-                this.instruments.kick.triggerAttackRelease("C2", "8n", time);
+                if (this.instruments.kick.loaded) {
+                    // Stop if playing, then start from beginning
+                    if (this.instruments.kick.state === 'started') {
+                        this.instruments.kick.stop();
+                    }
+                    this.instruments.kick.start(time);
+                }
                 break;
             case 'snare':
-                this.instruments.snare.triggerAttackRelease("8n", time);
+                if (this.instruments.snare.loaded) {
+                    if (this.instruments.snare.state === 'started') {
+                        this.instruments.snare.stop();
+                    }
+                    this.instruments.snare.start(time);
+                }
                 break;
             case 'hihat':
-                this.instruments.hihat.triggerAttackRelease("32n", time);
+                if (this.instruments.hihat.loaded) {
+                    if (this.instruments.hihat.state === 'started') {
+                        this.instruments.hihat.stop();
+                    }
+                    this.instruments.hihat.start(time);
+                }
                 break;
             case 'clap':
-                this.instruments.clap.triggerAttackRelease("8n", time);
+                if (this.instruments.clap.loaded) {
+                    if (this.instruments.clap.state === 'started') {
+                        this.instruments.clap.stop();
+                    }
+                    this.instruments.clap.start(time);
+                }
                 break;
             case 'bass':
                 // Bass notes in a simple pattern
