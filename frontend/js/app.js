@@ -31,6 +31,7 @@ class SoundSketchApp {
         this.handlePromptSubmit = this.handlePromptSubmit.bind(this);
         this.handleQuickPrompt = this.handleQuickPrompt.bind(this);
         this.handleGenerateTag = this.handleGenerateTag.bind(this);
+        this.handleClearBeat = this.handleClearBeat.bind(this);
     }
 
     /**
@@ -128,6 +129,7 @@ class SoundSketchApp {
             rampBtn: safeGetElement('rampBtn'),
             rampStartBPM: safeGetElement('rampStartBPM'),
             rampEndBPM: safeGetElement('rampEndBPM'),
+            clearBeatBtn: safeGetElement('clearBeatBtn'),
             
             // DJ controls
             djPrompt: safeGetElement('djPrompt'),
@@ -174,6 +176,7 @@ class SoundSketchApp {
         safeAddEventListener(this.elements.stopBeatBtn, 'click', this.handleStopBeat);
         safeAddEventListener(this.elements.tempoSlider, 'input', this.handleTempoChange);
         safeAddEventListener(this.elements.rampBtn, 'click', this.handleRamp);
+    safeAddEventListener(this.elements.clearBeatBtn, 'click', this.handleClearBeat);
         
         // DJ controls
         safeAddEventListener(this.elements.applyPromptBtn, 'click', this.handlePromptSubmit);
@@ -570,6 +573,43 @@ class SoundSketchApp {
             this.rampInterval = null;
         }
         console.log('BPM ramp stopped');
+    }
+
+    /**
+     * Clear all activated steps in the beat matrix (turn all dots off)
+     */
+    handleClearBeat() {
+        try {
+            // Stop ramping if active
+            this.stopRamp();
+            if (this.elements.rampBtn) this.elements.rampBtn.textContent = '📈 Ramp';
+
+            // Stop playback to prevent artifacts
+            if (this.audioEngine && this.audioEngine.isPlaying) {
+                this.audioEngine.stop();
+            }
+
+            // Clear all patterns (supporting dynamic instrument set)
+            const patterns = this.audioEngine.getPatterns();
+            Object.keys(patterns).forEach(instr => {
+                const empty = new Array(patterns[instr].length).fill(false);
+                this.audioEngine.updatePattern(instr, empty);
+            });
+
+            // Update visualization
+            this.updateBeatPatternDisplay();
+
+            // Reset play/stop buttons
+            if (this.elements.playBeatBtn) {
+                this.elements.playBeatBtn.disabled = false;
+                this.elements.playBeatBtn.textContent = '☀️ Play Beat';
+            }
+            if (this.elements.stopBeatBtn) this.elements.stopBeatBtn.disabled = true;
+
+            console.log('✅ Beat matrix cleared');
+        } catch (error) {
+            console.error('Error clearing beat matrix:', error);
+        }
     }
 
     /**
