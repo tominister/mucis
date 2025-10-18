@@ -16,10 +16,7 @@ class AudioEngine {
             kick: new Array(16).fill(false),
             snare: new Array(16).fill(false),
             hihat: new Array(16).fill(false),
-            clap: new Array(16).fill(false),
-            bass: new Array(16).fill(false),
-            synth: new Array(16).fill(false),
-            piano: new Array(16).fill(false)
+            clap: new Array(16).fill(false)
         };
         
         // Tone.js components
@@ -27,6 +24,8 @@ class AudioEngine {
         this.sequence = null;
         this.sequenceId = null; // For scheduleRepeat
         this.transport = Tone.Transport;
+        this.producerTagAudio = null;
+        this.producerTagPlayer = null;
         
         // Callbacks
         this.onStepChange = null;
@@ -78,15 +77,6 @@ class AudioEngine {
         
         // Occasional claps
         this.updatePattern('clap', [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false]);
-        
-        // Simple bass line
-        this.updatePattern('bass', [true, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false]);
-        
-        // Sparse synth melody
-        this.updatePattern('synth', [false, false, false, false, false, false, true, false, false, false, false, false, false, false, true, false]);
-        
-        // Piano accents
-        this.updatePattern('piano', [false, false, true, false, false, false, false, false, false, false, true, false, false, false, false, false]);
         
         console.log('Default beat pattern set');
     }
@@ -147,76 +137,6 @@ class AudioEngine {
             console.error('❌ Error loading drum samples:', error);
         }
 
-        // Bass - sub-bass synth for basslines
-        this.instruments.bass = new Tone.MonoSynth({
-            oscillator: {
-                type: "sawtooth"
-            },
-            filter: {
-                Q: 1,
-                type: "lowpass",
-                rolloff: -12
-            },
-            filterEnvelope: {
-                attack: 0.02,
-                decay: 0.1,
-                sustain: 0.8,
-                release: 0.2,
-                baseFrequency: 100,
-                octaves: 3
-            },
-            envelope: {
-                attack: 0.01,
-                decay: 0.1,
-                sustain: 0.7,
-                release: 0.3
-            }
-        }).toDestination();
-
-        // Synth - lead synthesizer
-        this.instruments.synth = new Tone.Synth({
-            oscillator: {
-                type: "sawtooth"
-            },
-            envelope: {
-                attack: 0.01,
-                decay: 0.2,
-                sustain: 0.3,
-                release: 0.8
-            },
-            filter: {
-                Q: 2,
-                type: "lowpass",
-                rolloff: -12
-            },
-            filterEnvelope: {
-                attack: 0.1,
-                decay: 0.3,
-                sustain: 0.4,
-                release: 0.8,
-                baseFrequency: 300,
-                octaves: 3
-            }
-        }).toDestination();
-
-        // Piano - acoustic piano samples
-        this.instruments.piano = new Tone.Sampler({
-            urls: {
-                C4: "C4.mp3",
-                D4: "D4.mp3",
-                E4: "E4.mp3",
-                F4: "F4.mp3",
-                G4: "G4.mp3",
-                A4: "A4.mp3",
-                B4: "B4.mp3",
-                C5: "C5.mp3"
-            },
-            baseUrl: "https://tonejs.github.io/audio/salamander/",
-            onload: () => {
-                console.log('Piano samples loaded');
-            }
-        }).toDestination();
-
         console.log('All instruments created successfully');
     }
 
@@ -234,6 +154,16 @@ class AudioEngine {
         // Schedule a callback every 16th note
         this.sequenceId = this.transport.scheduleRepeat((time) => {
             console.log('🎼 ScheduleRepeat callback fired for step:', this.currentStep, 'at time:', time);
+            
+            // Play producer tag at the start of each loop
+            if (this.currentStep === 0 && this.producerTagPlayer) {
+                try {
+                    this.producerTagPlayer.start(time);
+                    console.log('🎤 Playing producer tag at loop start');
+                } catch (error) {
+                    console.error('Error playing producer tag:', error);
+                }
+            }
             
             // Trigger instruments based on pattern
             Object.keys(this.patterns).forEach(instrument => {
@@ -294,24 +224,6 @@ class AudioEngine {
                     }
                     this.instruments.clap.start(time);
                 }
-                break;
-            case 'bass':
-                // Bass notes in a simple pattern
-                const bassNotes = ["C2", "G2", "F2", "A2"];
-                const bassNote = bassNotes[this.currentStep % bassNotes.length];
-                this.instruments.bass.triggerAttackRelease(bassNote, "8n", time);
-                break;
-            case 'synth':
-                // Synth melody notes
-                const synthNotes = ["C4", "E4", "G4", "B4", "D5", "F5"];
-                const synthNote = synthNotes[this.currentStep % synthNotes.length];
-                this.instruments.synth.triggerAttackRelease(synthNote, "8n", time);
-                break;
-            case 'piano':
-                // Piano chord notes
-                const pianoNotes = ["C4", "E4", "G4", "C5"];
-                const pianoNote = pianoNotes[this.currentStep % pianoNotes.length];
-                this.instruments.piano.triggerAttackRelease(pianoNote, "8n", time);
                 break;
         }
     }
@@ -396,8 +308,27 @@ class AudioEngine {
      */
     setTempo(bpm) {
         this.bpm = bpm;
-        this.transport.bpm.value = bpm;
+        try {
+            if (this.transport && this.transport.bpm) {
+                this.transport.bpm.value = bpm;
+            }
+        } catch (e) {
+            console.warn('Unable to set transport bpm:', e);
+        }
         console.log(`Tempo set to ${bpm} BPM`);
+    }
+
+    /**
+     * Set producer tag audio URL
+     */
+    setProducerTag(audioURL) {
+        this.producerTagAudio = audioURL;
+        if (audioURL) {
+            this.producerTagPlayer = new Tone.Player(audioURL).toDestination();
+            console.log('Producer tag audio loaded');
+        } else {
+            this.producerTagPlayer = null;
+        }
     }
 
     /**
@@ -422,10 +353,7 @@ class AudioEngine {
             kick: new Array(16).fill(false),
             snare: new Array(16).fill(false),
             hihat: new Array(16).fill(false),
-            clap: new Array(16).fill(false),
-            bass: new Array(16).fill(false),
-            synth: new Array(16).fill(false),
-            piano: new Array(16).fill(false)
+            clap: new Array(16).fill(false)
         };
 
         // Generate kick pattern based on classification confidence
@@ -475,39 +403,6 @@ class AudioEngine {
                 patterns.clap[14] = true;
             }
         }
-
-        // Generate bass pattern (complements kick)
-        if (classification.kick > 0.2) {
-            // Bass on downbeats, but less frequently than kick
-            patterns.bass[0] = Math.random() > 0.3;
-            patterns.bass[4] = Math.random() > 0.5;
-            patterns.bass[8] = Math.random() > 0.3;
-            patterns.bass[12] = Math.random() > 0.5;
-        }
-
-        // Generate synth pattern (melodic elements)
-        if (classification.hihat > 0.3 || classification.snare > 0.3) {
-            // Add some melodic interest
-            for (let i = 0; i < 16; i += 4) {
-                if (Math.random() > 0.7) {
-                    patterns.synth[i] = true;
-                }
-            }
-        }
-
-        // Generate piano pattern (harmonic elements)
-        if (classification.clap > 0.5) {
-            // Piano on some off-beats for harmony
-            patterns.piano[2] = Math.random() > 0.6;
-            patterns.piano[6] = Math.random() > 0.6;
-            patterns.piano[10] = Math.random() > 0.6;
-            patterns.piano[14] = Math.random() > 0.6;
-        }
-
-        // Update all patterns
-        Object.keys(patterns).forEach(instrument => {
-            this.updatePattern(instrument, patterns[instrument]);
-        });
 
         console.log('Generated patterns from classification:', patterns);
         return patterns;

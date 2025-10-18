@@ -232,6 +232,73 @@ app.post('/api/elevenlabs/narrate', async (req, res) => {
 });
 
 /**
+ * ElevenLabs API: Generate producer tag (female voice)
+ */
+app.post('/api/elevenlabs/producer-tag', async (req, res) => {
+    try {
+        const { tag, voice } = req.body;
+
+        if (!tag) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing tag text'
+            });
+        }
+
+        console.log('Generating producer tag with ElevenLabs:', tag);
+
+        if (ELEVENLABS_API_KEY) {
+            // Use a female voice for producer tags - Bella voice ID
+            const voiceId = 'EXAVITQu4vr4xnSDxMaL'; // Bella - female voice
+
+            const response = await axios.post(
+                `${ELEVENLABS_BASE_URL}/text-to-speech/${voiceId}`,
+                {
+                    text: tag,
+                    model_id: "eleven_monolingual_v1",
+                    voice_settings: {
+                        stability: 0.5,
+                        similarity_boost: 0.8, // Higher similarity for clearer producer tags
+                        style: 0.5,
+                        use_speaker_boost: true
+                    }
+                },
+                {
+                    headers: {
+                        'Accept': 'audio/mpeg',
+                        'Content-Type': 'application/json',
+                        'xi-api-key': ELEVENLABS_API_KEY
+                    },
+                    responseType: 'arraybuffer'
+                }
+            );
+
+            res.set({
+                'Content-Type': 'audio/mpeg',
+                'Content-Length': response.data.length
+            });
+
+            res.send(Buffer.from(response.data));
+
+        } else {
+            // Mock response - return empty audio or error
+            console.log('ElevenLabs API key not provided, using mock response');
+            res.status(503).json({
+                success: false,
+                error: 'ElevenLabs API not configured'
+            });
+        }
+
+    } catch (error) {
+        console.error('ElevenLabs API error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to generate producer tag'
+        });
+    }
+});
+
+/**
  * Generate mock Gemini response for testing
  */
 function generateMockGeminiResponse(prompt, currentPatterns) {

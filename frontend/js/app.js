@@ -16,6 +16,7 @@ class SoundSketchApp {
         this.recordingStartTime = 0;
         this.isRamping = false;
         this.rampInterval = null;
+        this.producerTagAudio = null;
         
         // UI elements
         this.elements = {};
@@ -29,7 +30,7 @@ class SoundSketchApp {
         this.handleRamp = this.handleRamp.bind(this);
         this.handlePromptSubmit = this.handlePromptSubmit.bind(this);
         this.handleQuickPrompt = this.handleQuickPrompt.bind(this);
-        this.handleNarrate = this.handleNarrate.bind(this);
+        this.handleGenerateTag = this.handleGenerateTag.bind(this);
     }
 
     /**
@@ -135,8 +136,11 @@ class SoundSketchApp {
             
             // AI response
             aiResponseText: safeGetElement('aiResponseText'),
-            narrateBtn: safeGetElement('narrateBtn'),
             narrationPlayer: safeGetElement('narrationPlayer'),
+            
+            // Producer tag
+            producerTag: safeGetElement('producerTag'),
+            generateTagBtn: safeGetElement('generateTagBtn'),
             
             // Loading
             loadingOverlay: safeGetElement('loadingOverlay'),
@@ -182,8 +186,13 @@ class SoundSketchApp {
             });
         }
         
-        // Narration
-        safeAddEventListener(this.elements.narrateBtn, 'click', this.handleNarrate);
+        // Producer tag
+        safeAddEventListener(this.elements.generateTagBtn, 'click', this.handleGenerateTag);
+        safeAddEventListener(this.elements.producerTag, 'keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.handleGenerateTag();
+            }
+        });
     }
 
     /**
@@ -215,12 +224,7 @@ class SoundSketchApp {
                     // Initialize beat pattern visualizer
                     this.initializeBeatPattern();
                     
-                    // Process any pending classification
-                    if (this.pendingClassification) {
-                        console.log('Processing pending classification...');
-                        this.generateBeatFromClassification(this.pendingClassification);
-                        this.pendingClassification = null;
-                    }
+                    // No need to process pending classification since we generate immediately
                     
                     // Enable play button now that audio is ready
                     if (this.elements.playBeatBtn) {
@@ -270,7 +274,7 @@ class SoundSketchApp {
      * Initialize beat pattern visualizer
      */
     initializeBeatPattern() {
-        const instruments = ['kick', 'snare', 'hihat', 'clap', 'bass', 'synth', 'piano'];
+        const instruments = ['kick', 'snare', 'hihat', 'clap'];
         
         instruments.forEach(instrument => {
             const stepsContainer = document.querySelector(`[data-instrument="${instrument}"] .pattern-steps`);
@@ -354,61 +358,52 @@ class SoundSketchApp {
      * Handle play beat
      */
     async handlePlayBeat() {
-        console.log('🎵 Play button clicked - checking state...');
-        console.log('App initialized:', this.isInitialized);
-        console.log('Audio engine initialized:', this.audioEngine?.isInitialized);
-        console.log('Play button disabled:', this.elements.playBeatBtn?.disabled);
-        
-        if (!this.isInitialized) {
-            console.log('App not initialized yet');
-            return;
-        }
-        
-        if (!this.audioEngine.isInitialized) {
-            console.log('Audio not activated yet - activating now...');
-            // Try to activate audio context and initialize engine
-            try {
-                // Start Tone.js audio context
-                await Tone.start();
-                console.log('Audio context activated from play button');
-                
-                // Initialize audio engine
-                await this.audioEngine.init();
-                console.log('Audio engine initialized from play button');
-                
-                // Set up audio engine callbacks
-                this.audioEngine.onStepChanged((step) => {
-                    console.log('🎵 Step changed to:', step);
-                    this.updateBeatVisualization(step);
-                });
-                
-                // Initialize beat pattern visualizer
-                this.initializeBeatPattern();
-                
-                // Enable play button
-                if (this.elements.playBeatBtn) {
-                    this.elements.playBeatBtn.disabled = false;
-                }
-                
-            } catch (error) {
-                console.error('Failed to activate audio:', error);
-                alert('Failed to activate audio. Please try clicking elsewhere on the page first.');
+        // Single source of truth: audioEngine.isPlaying
+        try {
+            // If audio engine says it's playing, stop it (toggle behavior)
+            if (this.audioEngine && this.audioEngine.isPlaying) {
+                console.log('Transport already running - stopping');
+                this.handleStopBeat();
                 return;
             }
-        }
-        
-        try {
-            const success = this.audioEngine.play();
-            if (success) {
-                if (this.elements.playBeatBtn) this.elements.playBeatBtn.disabled = true;
-                if (this.elements.stopBeatBtn) this.elements.stopBeatBtn.disabled = false;
-                console.log('✅ Beat started, buttons updated');
-            } else {
-                console.error('❌ Failed to start beat');
+
+            // Ensure the app is initialized (UI/components)
+            if (!this.isInitialized) {
+                console.log('App not initialized yet');
+                return;
             }
-        } catch (error) {
-            console.error('Error playing beat:', error);
-            alert('Error playing beat. Try clicking anywhere to activate audio first.');
+
+            // Ensure audio engine is initialized (Tone context + samples)
+            if (!this.audioEngine.isInitialized) {
+                console.log('Initializing audio engine from Play button...');
+                await Tone.start();
+                await this.audioEngine.init();
+
+                // Wire up callbacks after init
+                this.audioEngine.onStepChanged((step) => {
+                    this.updateBeatVisualization(step);
+                });
+
+                // Initialize visualizer (idempotent)
+                this.initializeBeatPattern();
+            }
+
+            // Start playback
+            const started = this.audioEngine.play();
+            if (started) {
+                if (this.elements.playBeatBtn) {
+                    this.elements.playBeatBtn.textContent = '⏸️ Pause';
+                    this.elements.playBeatBtn.disabled = false;
+                }
+                if (this.elements.stopBeatBtn) this.elements.stopBeatBtn.disabled = false;
+                console.log('✅ Beat started');
+            } else {
+                console.error('❌ audioEngine.play() returned false');
+                alert('Failed to start playback');
+            }
+        } catch (err) {
+            console.error('Error in handlePlayBeat:', err);
+            alert('Error starting audio. Click anywhere to activate audio and retry.');
         }
     }
 
@@ -417,29 +412,30 @@ class SoundSketchApp {
      */
     handleStopBeat() {
         console.log('⏹️ Stop button clicked - stopping beat...');
-        
+
         try {
-            if (this.audioEngine && this.audioEngine.isInitialized) {
+            if (this.audioEngine) {
                 const success = this.audioEngine.stop();
                 console.log('Audio engine stop result:', success);
             }
-            
+
             // Stop any active ramping
             this.stopRamp();
             if (this.elements.rampBtn) {
                 this.elements.rampBtn.textContent = '📈 Ramp';
             }
-            
-            // Always re-enable play button regardless of audio engine state
+
+            // Reset play/stop button states
             if (this.elements.playBeatBtn) {
                 this.elements.playBeatBtn.disabled = false;
-                console.log('✅ Play button re-enabled');
+                this.elements.playBeatBtn.textContent = '☀️ Play Beat';
+                console.log('✅ Play button re-enabled and text reset');
             }
             if (this.elements.stopBeatBtn) {
                 this.elements.stopBeatBtn.disabled = true;
                 console.log('✅ Stop button disabled');
             }
-            
+
             // Reset visualization
             this.updateBeatVisualization(-1);
             console.log('✅ Beat stopped and buttons reset');
@@ -505,36 +501,42 @@ class SoundSketchApp {
         console.log(`Starting BPM ramp from ${startBPM} to ${endBPM}`);
 
         this.isRamping = true;
-        const duration = 30000; // 30 seconds ramp
-        const steps = 60; // Update every 0.5 seconds
-        const stepDuration = duration / steps;
-        const bpmIncrement = (endBPM - startBPM) / steps;
+        const bpmStep = 5; // Increment by 5 BPM each time
+        const stepDuration = 1000; // 1 second per step
 
-        let currentStep = 0;
         let currentBPM = startBPM;
 
         this.rampInterval = setInterval(() => {
             if (!this.isRamping) return;
 
             // Update BPM
-            this.audioEngine.setTempo(Math.round(currentBPM));
+            this.audioEngine.setTempo(currentBPM);
 
             // Update UI
             if (this.elements.tempoSlider) {
-                this.elements.tempoSlider.value = Math.round(currentBPM);
+                this.elements.tempoSlider.value = currentBPM;
             }
             if (this.elements.tempoValue) {
-                this.elements.tempoValue.textContent = Math.round(currentBPM);
+                this.elements.tempoValue.textContent = currentBPM;
             }
 
-            currentStep++;
-            currentBPM += bpmIncrement;
-
-            // Stop ramping when we reach the end
-            if (currentStep >= steps) {
-                this.stopRamp();
-                this.elements.rampBtn.textContent = '📈 Ramp';
-                console.log('BPM ramp completed');
+            // Calculate next BPM step
+            if (startBPM < endBPM) {
+                currentBPM += bpmStep;
+                if (currentBPM >= endBPM) {
+                    currentBPM = endBPM;
+                    this.stopRamp();
+                    this.elements.rampBtn.textContent = '📈 Ramp';
+                    console.log('BPM ramp completed');
+                }
+            } else {
+                currentBPM -= bpmStep;
+                if (currentBPM <= endBPM) {
+                    currentBPM = endBPM;
+                    this.stopRamp();
+                    this.elements.rampBtn.textContent = '📈 Ramp';
+                    console.log('BPM ramp completed');
+                }
             }
         }, stepDuration);
     }
@@ -597,33 +599,38 @@ class SoundSketchApp {
     }
 
     /**
-     * Handle narration generation
+     * Handle producer tag generation
      */
-    async handleNarrate() {
-        const text = this.elements.aiResponseText.textContent;
-        if (!text) return;
-        
-        this.elements.narrateBtn.disabled = true;
-        this.elements.narrateBtn.textContent = 'Generating...';
-        
+    async handleGenerateTag() {
+        const tag = this.elements.producerTag.value.trim();
+        if (!tag) {
+            alert('Please enter a producer tag');
+            return;
+        }
+
+        this.elements.generateTagBtn.disabled = true;
+        this.elements.generateTagBtn.textContent = 'Generating...';
+
         try {
-            const audioURL = await this.apiClient.generateNarration(text);
-            
+            const audioURL = await this.apiClient.generateProducerTag(tag);
+
             if (audioURL) {
-                this.elements.narrationPlayer.src = audioURL;
-                this.elements.narrationPlayer.style.display = 'block';
-                this.elements.narrationPlayer.play();
+                // Store the tag audio for playback at the start of each loop
+                this.producerTagAudio = audioURL;
+                this.audioEngine.setProducerTag(audioURL);
+                this.elements.generateTagBtn.textContent = '✅ Tag Generated!';
+                setTimeout(() => {
+                    this.elements.generateTagBtn.textContent = '🎵 Generate Tag';
+                }, 2000);
             } else {
-                // Fallback: use browser speech synthesis
-                this.speakText(text);
+                alert('Failed to generate producer tag. Please try again.');
             }
-            
+
         } catch (error) {
-            console.error('Error generating narration:', error);
-            this.speakText(text);
+            console.error('Error generating producer tag:', error);
+            alert('Error generating producer tag. Please try again.');
         } finally {
-            this.elements.narrateBtn.disabled = false;
-            this.elements.narrateBtn.textContent = '🔊 Narrate with ElevenLabs';
+            this.elements.generateTagBtn.disabled = false;
         }
     }
 
@@ -662,13 +669,31 @@ class SoundSketchApp {
      * Generate beat from classification
      */
     generateBeatFromClassification(classification) {
-        if (this.audioEngine.isInitialized) {
-            const patterns = this.audioEngine.generatePatternFromClassification(classification);
-            this.updateBeatPatternDisplay();
-        } else {
-            // Store classification for later when audio engine is ready
-            this.pendingClassification = classification;
-            console.log('Classification ready - click anywhere to activate audio and generate beat!');
+        // Generate patterns regardless of audio engine initialization
+        const patterns = this.audioEngine.generatePatternFromClassification(classification);
+        
+        // Update the patterns in the audio engine
+        Object.keys(patterns).forEach(instrument => {
+            if (this.audioEngine.patterns[instrument]) {
+                this.audioEngine.patterns[instrument] = patterns[instrument];
+            }
+        });
+        
+        // Update the visual display
+        this.updateBeatPatternDisplay();
+        
+        console.log('✅ Beat generated from classification!');
+        
+        // Enable Play button so the user can activate audio and play immediately
+        if (this.elements.playBeatBtn) {
+            this.elements.playBeatBtn.disabled = false;
+            this.elements.playBeatBtn.textContent = '☀️ Play Beat';
+            console.log('Play button enabled after beat generation');
+        }
+
+        // If audio engine is not yet initialized, user still needs to click anywhere
+        if (!this.audioEngine.isInitialized) {
+            console.log('Audio not ready yet - patterns saved for when you click to play!');
         }
     }
 

@@ -267,7 +267,7 @@ class AIClassifier {
             const className = prediction.className.toLowerCase();
             const probability = prediction.probability;
             
-            if (className.includes('kick') || className.includes('bass')) {
+            if (className.includes('kick')) {
                 classification.kick = Math.max(classification.kick, probability);
             } else if (className.includes('snare')) {
                 classification.snare = Math.max(classification.snare, probability);
