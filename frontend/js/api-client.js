@@ -5,7 +5,12 @@
 
 class APIClient {
     constructor() {
-        this.baseURL = 'http://localhost:3000';
+        // Use same origin as the page when possible so frontend and backend
+        // calls go to the server that's actually serving the app. Falls back
+        // to localhost:3001 if window.location is not available (e.g. tests).
+        this.baseURL = (typeof window !== 'undefined' && window.location && window.location.origin)
+            ? window.location.origin
+            : 'http://localhost:3001';
         this.isInitialized = false;
     }
 
@@ -101,6 +106,40 @@ class APIClient {
     }
 
     /**
+     * Generate producer tag using ElevenLabs (female voice)
+     */
+    async generateProducerTag(tag) {
+        try {
+            if (this.isInitialized) {
+                const response = await fetch(`${this.baseURL}/api/elevenlabs/producer-tag`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        tag: tag,
+                        voice: 'female' // Specify female voice
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+
+                const audioBlob = await response.blob();
+                return URL.createObjectURL(audioBlob);
+            } else {
+                // Use mock response
+                return this.mockElevenLabsResponse(tag);
+            }
+
+        } catch (error) {
+            console.error('Error generating producer tag:', error);
+            return this.mockElevenLabsResponse(tag);
+        }
+    }
+
+    /**
      * Mock Gemini response for demo purposes
      */
     mockGeminiResponse(prompt, currentPatterns) {
@@ -129,12 +168,6 @@ class APIClient {
                 step || (i === 6 || i === 14)
             );
             response.explanation = "Added syncopated kick patterns to make the beat more bouncy.";
-            
-        } else if (promptLower.includes('808') || promptLower.includes('bass')) {
-            // Emphasize kick pattern
-            modifications.kick = [true, false, false, false, true, false, true, false, 
-                                 true, false, false, false, true, false, true, false];
-            response.explanation = "Created an 808-style kick pattern with emphasis on the low end.";
             
         } else if (promptLower.includes('lo-fi') || promptLower.includes('lofi')) {
             // Reduce complexity, add swing

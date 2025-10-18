@@ -24,9 +24,9 @@
 
         <!-- Main Interface -->
         <main class="main-interface">
-            <!-- Step 1: Record Beatbox -->
-            <section class="record-section">
-                <h2>🎤 Step 1: Beatbox Your Rhythm</h2>
+            <!-- Section 1: Record Beatbox -->
+            <section class="beatbox-section">
+                <h2>🎤 Section 1: Beatbox Your Rhythm</h2>
                 <div class="record-controls">
                     <button id="recordBtn" class="btn btn-record">🔴 Start Recording</button>
                     <button id="stopBtn" class="btn btn-stop" disabled>⏹️ Stop</button>
@@ -38,9 +38,9 @@
                 <canvas id="waveform" width="600" height="100"></canvas>
             </section>
 
-            <!-- Step 2: AI Classification Results -->
+            <!-- Section 2: AI Classification Results -->
             <section class="classification-section">
-                <h2>🧠 Step 2: AI Beat Analysis</h2>
+                <h2>🧠 Section 2: AI Beat Analysis</h2>
                 <div id="classificationResults" class="results-grid">
                     <div class="beat-element">
                         <span class="beat-name">Kick</span>
@@ -73,9 +73,9 @@
                 </div>
             </section>
 
-            <!-- Step 3: Generated Beat -->
+            <!-- Section 3: Generated Beat -->
             <section class="beat-section">
-                <h2>🎵 Step 3: Your Generated Beat</h2>
+                <h2>🎵 Section 3: Your Generated Beat</h2>
                 <div class="beat-controls">
                     <button id="playBeatBtn" class="btn btn-play" disabled>☀️ Play Beat</button>
                     <button id="stopBeatBtn" class="btn btn-stop" disabled>⏹️ Stop</button>
@@ -165,13 +165,13 @@
                 </div>
             </section>
 
-            <!-- Step 4: DJ Controls -->
+            <!-- Section 4: DJ Controls -->
             <section class="dj-section">
-                <h2>🎧 Step 4: DJ Modifications</h2>
+                <h2>🎧 Section 4: DJ Modifications</h2>
                 <div class="dj-controls">
                     <div class="prompt-input">
                         <label for="djPrompt">Tell the AI how to modify your beat:</label>
-                        <input type="text" id="djPrompt" placeholder="e.g., 'add more hi-hats', 'make it more funky', 'add 808s'">
+                        <input type="text" id="djPrompt" placeholder="e.g., 'add more hi-hats', 'make it more funky', 'add percussion'">
                         <button id="applyPromptBtn" class="btn btn-primary">🤖 Apply with Gemini</button>
                     </div>
                     
@@ -180,7 +180,6 @@
                         <div class="quick-prompts-grid">
                             <button class="quick-prompt-btn" data-prompt="add more hi-hats">🎩 More Hi-Hats</button>
                             <button class="quick-prompt-btn" data-prompt="make it bouncy">🏀 Make it Bouncy</button>
-                            <button class="quick-prompt-btn" data-prompt="add 808 bass">🔊 Add 808s</button>
                             <button class="quick-prompt-btn" data-prompt="make it lo-fi">📻 Lo-Fi Style</button>
                             <button class="quick-prompt-btn" data-prompt="double the tempo">⚡ Double Tempo</button>
                         </div>
@@ -191,7 +190,19 @@
                 <div id="aiResponse" class="ai-response">
                     <h4>🤖 AI Response:</h4>
                     <p id="aiResponseText">Apply a prompt to see AI modifications...</p>
-                    <button id="narrateBtn" class="btn btn-secondary" disabled>🔊 Narrate with ElevenLabs</button>
+                </div>
+            </section>
+
+            <!-- Section 5: Producer Tag -->
+            <section class="producer-tag-section">
+                <h2>🎤 Section 5: Producer Tag</h2>
+                <div class="producer-tag-controls">
+                    <div class="tag-input-group">
+                        <label for="producerTag">Enter your producer tag:</label>
+                        <input type="text" id="producerTag" placeholder="e.g., 'Beat Master', 'DJ Flow', 'The Matrix'" maxlength="50">
+                        <button id="generateTagBtn" class="btn btn-primary">🎵 Generate Tag</button>
+                    </div>
+                    
                 </div>
             </section>
 
@@ -201,8 +212,7 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>Built with ❤️ for <strong>HackTX 2025</strong> | Powered by <span style="color: #ffd700;">Gemini 2.0 Flash</span>, <span style="color: #00f2fe;">ElevenLabs</span>, <span style="color: #ff6b6b;">Tone.js</span> & <span style="color: #4ecdc4;">TensorFlow.js</span></p>
-            <p style="margin-top: 10px; font-size: 0.9rem;">🌌 Celestial Theme Winner - Bringing the Universe to Music Creation 🌌</p>
+            <p>Powered by <span style="color: #ffd700;">Gemini 2.0 Flash</span>, <span style="color: #00f2fe;">ElevenLabs</span>, <span style="color: #ff6b6b;">Tone.js</span> & <span style="color: #4ecdc4;">TensorFlow.js</span></p>
         </footer>
     </div>
 

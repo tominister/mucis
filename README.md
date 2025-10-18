@@ -14,7 +14,7 @@ A revolutionary web app that combines **human creativity** with **AI intelligenc
 2. 🧠 **AI analyzes your beats** - TensorFlow.js identifies kick, snare, hi-hat, clap
 3. 🎵 **Generates a looped beat** - Tone.js creates professional-quality audio
 4. 🎧 **DJ AI modifies on command** - Gemini 2.5 interprets your text prompts
-5. 🔊 **Voice narrates changes** - ElevenLabs explains what was modified
+5. 🎤 **Producer Tag** - Add your signature tag spoken in a female voice at the start of each loop
 
 **From "boom-tss-boom-boom-tss" to professional beats in 30 seconds!**
 

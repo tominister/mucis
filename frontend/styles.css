@@ -988,11 +988,6 @@ section h2::after {
     gap: 10px;
 }
 
-.ai-response h4::before {
-    content: '🤖';
-    font-size: 1.5rem;
-}
-
 #aiResponseText {
     margin-bottom: 20px;
     line-height: 1.7;
@@ -1002,6 +997,58 @@ section h2::after {
     padding: 15px;
     border-radius: 8px;
     border: 1px solid var(--border-color);
+}
+
+/* Producer Tag Section */
+.producer-tag-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.tag-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    background: var(--bg-secondary);
+    padding: 25px;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+}
+
+.tag-input-group label {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+}
+
+#producerTag {
+    padding: 16px 20px;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 1rem;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    transition: all 0.3s ease;
+}
+
+#producerTag:focus {
+    outline: none;
+    border-color: var(--text-accent);
+    box-shadow: 0 0 20px rgba(0, 242, 254, 0.2);
+    background: var(--bg-secondary);
+}
+
+#producerTag::placeholder {
+    color: var(--text-secondary);
+}
+
+.tag-description {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    font-style: italic;
+    margin-top: 10px;
 }
 
 /* Enhanced Classification Results */

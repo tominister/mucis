@@ -26,6 +26,8 @@ class AudioEngine {
         this.sequence = null;
         this.sequenceId = null; // For scheduleRepeat
         this.transport = Tone.Transport;
+        this.producerTagAudio = null;
+        this.producerTagPlayer = null;
         
         // Callbacks
         this.onStepChange = null;
@@ -182,6 +184,16 @@ class AudioEngine {
         // Schedule a callback every 16th note
         this.sequenceId = this.transport.scheduleRepeat((time) => {
             console.log('🎼 ScheduleRepeat callback fired for step:', this.currentStep, 'at time:', time);
+            
+            // Play producer tag at the start of each loop
+            if (this.currentStep === 0 && this.producerTagPlayer) {
+                try {
+                    this.producerTagPlayer.start(time);
+                    console.log('🎤 Playing producer tag at loop start');
+                } catch (error) {
+                    console.error('Error playing producer tag:', error);
+                }
+            }
             
             // Trigger instruments based on pattern
             Object.keys(this.patterns).forEach(instrument => {
@@ -342,8 +354,27 @@ class AudioEngine {
      */
     setTempo(bpm) {
         this.bpm = bpm;
-        this.transport.bpm.value = bpm;
+        try {
+            if (this.transport && this.transport.bpm) {
+                this.transport.bpm.value = bpm;
+            }
+        } catch (e) {
+            console.warn('Unable to set transport bpm:', e);
+        }
         console.log(`Tempo set to ${bpm} BPM`);
+    }
+
+    /**
+     * Set producer tag audio URL
+     */
+    setProducerTag(audioURL) {
+        this.producerTagAudio = audioURL;
+        if (audioURL) {
+            this.producerTagPlayer = new Tone.Player(audioURL).toDestination();
+            console.log('Producer tag audio loaded');
+        } else {
+            this.producerTagPlayer = null;
+        }
     }
 
     /**

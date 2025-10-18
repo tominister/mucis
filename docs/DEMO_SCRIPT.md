@@ -58,7 +58,7 @@
 
 ---
 
-### **STEP 3: DJ AI MODIFICATIONS (90 seconds)**
+### **SECTION 4: DJ AI MODIFICATIONS (90 seconds)**
 
 #### Modification 1: "Add More Hi-Hats"
 *[Type in prompt box or click quick prompt]*
@@ -95,16 +95,18 @@
 
 ---
 
-### **STEP 4: AI NARRATION (30 seconds)**
-*[Click "Narrate with ElevenLabs"]*
+### **SECTION 5: PRODUCER TAG (30 seconds)**
+*[Enter "The Matrix" in the producer tag field and click "Generate Tag"]*
 
-**"Finally, our ElevenLabs AI narrator explains what just happened..."**
+**"Finally, add your signature producer tag that plays at the start of each loop..."**
 
-*[Play the generated audio or use browser speech synthesis]*
+*[Click "Generate Tag" - ElevenLabs generates the tag in a female voice]*
 
-*AI Voice: "I created an 808-style kick pattern with emphasis on the low end"*
+**"Now when you play the beat, you'll hear 'The Matrix' announced at the beginning of each loop!"**
 
-**"And that's SoundSketch.tech - from beatbox to professional beat in under 3 minutes, powered by cutting-edge AI!"**
+*[Play the beat to demonstrate the producer tag playing at the start of the loop]*
+
+**"And that's SoundSketch.tech - from beatbox to professional beat with your personal producer tag, powered by cutting-edge AI!"**
 
 ---
 
@@ -112,14 +114,14 @@
 
 ### During Demo, Mention:
 - **"Powered by Gemini 2.5 Flash"** - when showing prompt processing
-- **"Using ElevenLabs voice synthesis"** - during narration
+- **"Using ElevenLabs voice synthesis"** - during producer tag generation
 - **"Running on our .tech domain"** - when showing URL
 - **"Hosted on DigitalOcean"** - if deployed
 
 ### Post-Demo Sponsor Summary:
 **"We're targeting multiple sponsor prizes:**
 - **Gemini 2.5**: Our core DJ AI uses Gemini to interpret natural language and modify beats
-- **ElevenLabs**: Provides voice narration of all beat changes  
+- **ElevenLabs**: Provides producer tags in female voice at the start of each beat loop  
 - **.Tech Domain**: We're running on soundsketch.tech
 - **DigitalOcean**: Hosting our backend APIs and model inference"
 
