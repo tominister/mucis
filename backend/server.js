@@ -87,33 +87,41 @@ app.post('/api/gemini/process-prompt', async (req, res) => {
         console.log('Processing prompt with Gemini:', prompt);
 
         // Construct the prompt for Gemini
-        const geminiPrompt = `
-You are a DJ and music producer AI. I have a beat with the following 16-step patterns (each array represents one measure, true = beat plays, false = silent):
+                const geminiPrompt = `
 
-Current patterns:
+You are a DJ and music producer assistant. The user will provide a 16-step beat matrix for six percussion rows. Each row is an array of 16 values where 1 means "play" and 0 means "silent" (booleans are also acceptable: true/false).
+
+Current patterns (use these as the source of truth):
 - Kick: ${JSON.stringify(currentPatterns.kick)}
 - Snare: ${JSON.stringify(currentPatterns.snare)}
 - Hi-hat: ${JSON.stringify(currentPatterns.hihat)}
 - Clap: ${JSON.stringify(currentPatterns.clap)}
+- Cymbal: ${JSON.stringify(currentPatterns.cymbal || new Array(16).fill(false))}
+- Perc: ${JSON.stringify(currentPatterns.perc || new Array(16).fill(false))}
 
-The user wants to modify this beat with the instruction: "${prompt}"
+User instruction: "${prompt}"
 
-Please respond with a JSON object containing:
-1. "kick", "snare", "hihat", "clap" arrays (16 booleans each) for the modified patterns
-2. "tempo" number (optional, only if tempo change is requested)
-3. "explanation" string describing what you changed and why
 
-Make musical sense and follow common beat patterns. Keep it creative but functional.
+TASK: Modify the provided 16-step matrices according to the user instruction and return ONLY a single JSON object (no extra commentary, no markdown). The JSON must include the keys "kick", "snare", "hihat", "clap", "cymbal", and "perc" whose values are arrays of length 16 containing only 0 or 1 (numeric) or true/false (boolean). Optionally include a numeric "tempo" if the prompt requests a BPM change. Also include an "explanation" string describing the musical change in 1-2 sentences.
 
-Response format:
+STRICT RESPONSE REQUIREMENTS:
+1) Return exactly one JSON object and nothing else.
+2) Arrays must be length 16. Use 0/1 (preferred) or true/false.
+3) Do not include any additional keys beyond the four patterns, optional tempo, and explanation.
+
+Example response:
 {
-  "kick": [true, false, ...],
-  "snare": [false, false, ...],
-  "hihat": [false, true, ...],
-  "clap": [false, false, ...],
-  "tempo": 120,
-  "explanation": "I added more hi-hats on the off-beats..."
+    "kick": [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],
+    "snare": [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+    "hihat": [0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0],
+    "clap": [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+    "cymbal": [0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
+    "perc": [0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0],
+    "tempo": 128,
+    "explanation": "Added extra off-beat hi-hats, a cymbal hit on beat 9, and added percussion for groove; raised tempo for more energy."
 }
+
+Keep the changes musically sensible and minimal unless the user asks for an extreme transformation.
 `;
 
         let geminiResponse;
@@ -320,6 +328,8 @@ function generateMockGeminiResponse(prompt, currentPatterns) {
         snare: [...currentPatterns.snare],
         hihat: [...currentPatterns.hihat],
         clap: [...currentPatterns.clap],
+        cymbal: (currentPatterns.cymbal || new Array(16).fill(false)),
+        perc: (currentPatterns.perc || new Array(16).fill(false)),
         explanation: 'Applied modifications based on your request.'
     };
 
@@ -364,6 +374,9 @@ function generateMockGeminiResponse(prompt, currentPatterns) {
                               false, false, true, false, false, true, false, false];
         modifications.clap = [false, false, false, false, true, false, false, true,
                              false, false, false, false, true, false, false, false];
+        // Add a cymbal on the off-beat and light percussion
+        modifications.cymbal = [false, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false];
+        modifications.perc = modifications.perc.map((step, i) => ((i % 3 === 1) ? true : step));
         modifications.explanation = "Added syncopated snare and clap patterns for a funky groove.";
         
     } else {
@@ -371,6 +384,13 @@ function generateMockGeminiResponse(prompt, currentPatterns) {
         modifications.hihat = modifications.hihat.map((step, i) => 
             step || Math.random() > 0.7
         );
+        // Occasionally add a cymbal or percussion to keep it interesting
+        if (Math.random() > 0.6) {
+            modifications.cymbal[Math.floor(Math.random() * 16)] = true;
+        }
+        if (Math.random() > 0.5) {
+            modifications.perc[Math.floor(Math.random() * 16)] = true;
+        }
         modifications.explanation = "Applied general modifications to enhance the rhythm.";
     }
 
@@ -506,13 +526,19 @@ function validateBeatModification(response, currentPatterns) {
         snare: currentPatterns.snare,
         hihat: currentPatterns.hihat,
         clap: currentPatterns.clap,
+        cymbal: currentPatterns.cymbal || new Array(16).fill(false),
+        perc: currentPatterns.perc || new Array(16).fill(false),
         explanation: response.explanation || 'Beat pattern updated.'
     };
 
     // Validate each pattern
-    ['kick', 'snare', 'hihat', 'clap'].forEach(instrument => {
+    ['kick', 'snare', 'hihat', 'clap', 'cymbal', 'perc'].forEach(instrument => {
         if (Array.isArray(response[instrument]) && response[instrument].length === 16) {
-            validated[instrument] = response[instrument].map(step => Boolean(step));
+            // Coerce values: accept 0/1 numbers or booleans; treat any truthy value as true
+            validated[instrument] = response[instrument].map(step => {
+                if (typeof step === 'number') return step === 1;
+                return !!step;
+            });
         }
     });
 

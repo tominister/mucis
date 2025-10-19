@@ -308,6 +308,10 @@ section h2::after {
     margin-bottom: 30px;
 }
 
+.clear-beat-container {
+    margin-left: auto; /* push to the far right */
+}
+
 .beat-controls::before {
     content: '';
     position: absolute;
@@ -454,6 +458,20 @@ section h2::after {
     height: 100%;
     transition: width 0.5s ease;
     border-radius: 10px;
+}
+
+.btn-clear {
+    background: linear-gradient(135deg, #6dd5ed 0%, #2193b0 100%);
+    color: white;
+    border: none;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-weight: 700;
+}
+
+.btn-clear:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px rgba(33, 147, 176, 0.25);
 }
 
 .kick-fill { background: #e74c3c; }
@@ -657,7 +675,9 @@ section h2::after {
 }
 
 .pattern-row {
-    display: flex;
+    /* Use a 3-column grid so label, steps and controls align vertically across rows */
+    display: grid;
+    grid-template-columns: 140px 1fr auto;
     align-items: center;
     gap: 20px;
     padding: 15px;
@@ -673,12 +693,14 @@ section h2::after {
 }
 
 .pattern-label {
-    width: 100px;
+    min-width: 110px;
     font-weight: 600;
     font-size: 1.1rem;
     color: var(--text-primary);
-    text-align: right;
+    text-align: left; /* left-justify instrument labels */
     font-family: 'JetBrains Mono', monospace;
+    display: block;
+    align-self: center;
 }
 
 .pattern-steps {
@@ -686,6 +708,8 @@ section h2::after {
     gap: 8px;
     flex: 1;
 }
+
+.pattern-steps { align-self: center; }
 
 .step {
     width: 40px;
@@ -1192,14 +1216,21 @@ section h2::after {
     }
 
     .pattern-row {
+        display: flex;
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
         gap: 15px;
     }
 
     .pattern-label {
         width: auto;
         text-align: left;
+    }
+
+    /* Ensure the steps take full width and dots are centered within their row on mobile */
+    .pattern-steps {
+        width: 100%;
+        justify-content: center;
     }
 
     .quick-prompts-grid {
