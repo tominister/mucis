@@ -142,6 +142,106 @@ class APIClient {
     }
 
     /**
+     * Upload beatbox audio for rhythm analysis
+     */
+    async uploadBeatboxAudio(audioBlob) {
+        try {
+            const formData = new FormData();
+            formData.append('audio', audioBlob, 'beatbox.webm');
+
+            if (this.isInitialized) {
+                const response = await fetch(`${this.baseURL}/api/upload-audio`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+
+                const result = await response.json();
+                return result.rhythmData;
+            } else {
+                // Use mock response
+                return this.mockRhythmData();
+            }
+
+        } catch (error) {
+            console.error('Error uploading beatbox audio:', error);
+            return this.mockRhythmData();
+        }
+    }
+
+    /**
+     * Generate drum pattern from rhythm data
+     */
+    async generatePatternFromRhythm(rhythmData, style = null) {
+        try {
+            if (this.isInitialized) {
+                const response = await fetch(`${this.baseURL}/api/generate-pattern`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        rhythmData: rhythmData,
+                        style: style
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+
+                const result = await response.json();
+                return result.pattern;
+            } else {
+                // Use mock response
+                return this.mockPatternGeneration(rhythmData);
+            }
+
+        } catch (error) {
+            console.error('Error generating pattern:', error);
+            return this.mockPatternGeneration(rhythmData);
+        }
+    }
+
+    /**
+     * Mock rhythm data for demo
+     */
+    mockRhythmData() {
+        return {
+            duration: 2.5,
+            bpm: 120,
+            syllables: [
+                { phoneme: 'b', time: 0.0, type: 'kick' },
+                { phoneme: 'ts', time: 0.25, type: 'hihat' },
+                { phoneme: 'k', time: 0.5, type: 'snare' },
+                { phoneme: 'ts', time: 0.75, type: 'hihat' },
+                { phoneme: 'b', time: 1.0, type: 'kick' },
+                { phoneme: 'ts', time: 1.25, type: 'hihat' },
+                { phoneme: 'pf', time: 1.5, type: 'clap' },
+                { phoneme: 'ts', time: 1.75, type: 'hihat' }
+            ]
+        };
+    }
+
+    /**
+     * Mock pattern generation for demo
+     */
+    mockPatternGeneration(rhythmData) {
+        return {
+            bpm: rhythmData.bpm || 120,
+            kick: [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false],
+            snare: [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false],
+            hihat: [false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true],
+            clap: [false, false, false, false, false, false, true, false, false, false, false, false, false, false, true, false],
+            cymbal: [true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false],
+            perc: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false]
+        };
+    }
+
+    /**
      * Mock Gemini response for demo purposes
      */
     mockGeminiResponse(prompt, currentPatterns) {

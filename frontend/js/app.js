@@ -146,6 +146,10 @@ class SoundSketchApp {
             cymbalSelector: safeGetElement('cymbalSelector'),
             percSelector: safeGetElement('percSelector'),
             
+            // Producer tag
+            producerTag: safeGetElement('producerTag'),
+            generateTagBtn: safeGetElement('generateTagBtn'),
+            
             // Loading
             loadingOverlay: safeGetElement('loadingOverlay'),
             loadingText: safeGetElement('loadingText')
@@ -212,6 +216,9 @@ class SoundSketchApp {
         safeAddEventListener(this.elements.percSelector, 'change', (e) => {
             this.handleSampleChange('perc', e.target.value);
         });
+        
+        // Producer tag
+        safeAddEventListener(this.elements.generateTagBtn, 'click', this.handleGenerateTag);
     }
 
     /**

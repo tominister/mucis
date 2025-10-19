@@ -378,6 +378,126 @@ function generateMockGeminiResponse(prompt, currentPatterns) {
 }
 
 /**
+ * Map syllables to 16-step drum pattern
+ */
+function mapSyllablesToPattern(rhythmData) {
+    const pattern = {
+        bpm: rhythmData.bpm || 120,
+        kick: new Array(16).fill(false),
+        snare: new Array(16).fill(false),
+        hihat: new Array(16).fill(false),
+        clap: new Array(16).fill(false),
+        cymbal: new Array(16).fill(false),
+        perc: new Array(16).fill(false)
+    };
+
+    // Calculate step duration based on BPM
+    const beatsPerSecond = pattern.bpm / 60;
+    const secondsPerBeat = 1 / beatsPerSecond;
+    const secondsPer16Steps = secondsPerBeat * 4; // 4 beats = 1 measure
+    const secondsPerStep = secondsPer16Steps / 16;
+
+    // Map each syllable to the nearest step
+    rhythmData.syllables.forEach(syllable => {
+        const stepIndex = Math.round(syllable.time / secondsPerStep) % 16;
+        
+        // Map phoneme to drum type
+        switch(syllable.type) {
+            case 'kick':
+                pattern.kick[stepIndex] = true;
+                break;
+            case 'snare':
+                pattern.snare[stepIndex] = true;
+                break;
+            case 'hihat':
+                pattern.hihat[stepIndex] = true;
+                break;
+            case 'clap':
+                pattern.clap[stepIndex] = true;
+                break;
+            case 'cymbal':
+                pattern.cymbal[stepIndex] = true;
+                break;
+            case 'perc':
+                pattern.perc[stepIndex] = true;
+                break;
+        }
+    });
+
+    return pattern;
+}
+
+/**
+ * Enhance pattern with Gemini AI
+ */
+async function enhancePatternWithGemini(pattern, style, bpm) {
+    const geminiPrompt = `
+You are a professional music producer. I have a basic drum pattern that was created from beatboxing:
+
+Current 16-step pattern:
+- Kick: ${JSON.stringify(pattern.kick)}
+- Snare: ${JSON.stringify(pattern.snare)}
+- Hi-hat: ${JSON.stringify(pattern.hihat)}
+- Clap: ${JSON.stringify(pattern.clap)}
+- Cymbal: ${JSON.stringify(pattern.cymbal)}
+- Perc: ${JSON.stringify(pattern.perc)}
+- BPM: ${bpm}
+
+Please enhance this pattern to make it sound like: "${style}"
+
+Respond with a JSON object containing enhanced patterns for all 6 instruments (16 booleans each), the BPM, and an explanation.
+
+Response format:
+{
+  "kick": [true, false, ...],
+  "snare": [false, false, ...],
+  "hihat": [false, true, ...],
+  "clap": [false, false, ...],
+  "cymbal": [false, false, ...],
+  "perc": [false, false, ...],
+  "bpm": 125,
+  "explanation": "Enhanced the pattern by..."
+}
+`;
+
+    const response = await axios.post(
+        `${GEMINI_BASE_URL}/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+            contents: [{
+                parts: [{
+                    text: geminiPrompt
+                }]
+            }],
+            generationConfig: {
+                temperature: 0.8,
+                topK: 40,
+                topP: 0.95,
+                maxOutputTokens: 1024,
+            }
+        },
+        {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }
+    );
+
+    const generatedText = response.data.candidates[0].content.parts[0].text;
+    
+    // Extract JSON from the response
+    const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+        const enhanced = JSON.parse(jsonMatch[0]);
+        return {
+            ...pattern,
+            ...enhanced
+        };
+    }
+
+    return pattern;
+}
+
+/**
  * Validate and sanitize beat modification response
  */
 function validateBeatModification(response, currentPatterns) {
