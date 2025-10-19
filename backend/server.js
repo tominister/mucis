@@ -1,5 +1,5 @@
 /**
- * Backend Server for SoundSketch.tech
+ * Backend Server 
  * Handles API requests for Gemini and ElevenLabs integration
  */
 
@@ -24,6 +24,40 @@ app.use(express.json());
 app.use(express.static('frontend'));
 // Serve drumset samples
 app.use('/drumset', express.static('drumset'));
+// Serve models directory so frontend can load Teachable Machine exports placed at /models
+app.use('/models', express.static(path.join(__dirname, '../models')));
+
+/**
+ * Fallback:
+ * This is a safe convenience only for local development.
+ */
+app.get('/models/tm-my-audio-model/model.json', (req, res, next) => {
+    try {
+        // Prefer the exact path first
+        const preferredDir = path.join(__dirname, '..', 'models', 'tm-my-audio-model');
+        const preferredPath = path.join(preferredDir, 'model.json');
+        if (fs.existsSync(preferredPath)) return res.sendFile(preferredPath);
+
+        // If not present, search for any sibling directory that starts with tm-my-audio-model
+        const modelsRoot = path.join(__dirname, '..', 'models');
+        const entries = fs.readdirSync(modelsRoot, { withFileTypes: true });
+        for (const ent of entries) {
+            if (!ent.isDirectory()) continue;
+            if (ent.name.toLowerCase().startsWith('tm-my-audio-model')) {
+                const candidatePath = path.join(modelsRoot, ent.name, 'model.json');
+                if (fs.existsSync(candidatePath)) {
+                    console.log(`Serving model.json from folder: ${ent.name}`);
+                    return res.sendFile(candidatePath);
+                }
+            }
+        }
+
+        return res.status(404).json({ success: false, error: 'model.json not found in tm-my-audio-model* directories' });
+    } catch (err) {
+        console.error('Model fallback error:', err);
+        return res.status(500).json({ success: false, error: String(err.message) });
+    }
+});
 
 // Simple request logging for debugging (method, path, body)
 app.use((req, res, next) => {
@@ -46,6 +80,18 @@ const upload = multer({
     }
 });
 
+// Helper: safe write file to models directory
+const fs = require('fs');
+const MODEL_DIR = path.join(__dirname, '../models/tm-my-audio-model');
+
+// Ensure models directory exists
+try {
+    fs.mkdirSync(MODEL_DIR, { recursive: true });
+} catch (e) {
+    console.warn('Could not create model directory:', e.message);
+}
+
+
 // API Configuration
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
@@ -61,6 +107,65 @@ app.get('/health', (req, res) => {
         timestamp: new Date().toISOString(),
         version: '1.0.0'
     });
+});
+
+/**
+ * Keys check endpoint - safe diagnostic
+ * Returns whether GEMINI and ELEVENLABS env vars are present.
+ * If present, performs a lightweight, timed test call to each provider and
+ * returns a sanitized success/failure result (no secret data returned).
+ */
+app.get('/api/keys/check', async (req, res) => {
+    const result = {
+        hasGeminiKey: !!GEMINI_API_KEY,
+        hasElevenlabsKey: !!ELEVENLABS_API_KEY,
+        gemini: null,
+        elevenlabs: null
+    };
+
+    // Use a short timeout for test calls
+    const axiosConfig = { timeout: 5000 };
+
+    // Test Gemini (non-destructive generateContent call with tiny prompt)
+    if (GEMINI_API_KEY) {
+        try {
+            const testPrompt = 'Return a single-word JSON: {"ok":1}';
+            const geminiResp = await axios.post(
+                `${GEMINI_BASE_URL}/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+                {
+                    contents: [{ parts: [{ text: testPrompt }] }],
+                    generationConfig: { maxOutputTokens: 10 }
+                },
+                axiosConfig
+            );
+            if (geminiResp && geminiResp.status >= 200 && geminiResp.status < 300) {
+                result.gemini = { ok: true, status: geminiResp.status };
+            } else {
+                result.gemini = { ok: false, status: geminiResp.status };
+            }
+        } catch (err) {
+            result.gemini = { ok: false, error: String(err.message) };
+        }
+    }
+
+    // Test ElevenLabs (GET voices) - lightweight
+    if (ELEVENLABS_API_KEY) {
+        try {
+            const elResp = await axios.get(`${ELEVENLABS_BASE_URL}/voices`, {
+                headers: { 'xi-api-key': ELEVENLABS_API_KEY },
+                timeout: 5000
+            });
+            if (elResp && elResp.status >= 200 && elResp.status < 300) {
+                result.elevenlabs = { ok: true, status: elResp.status };
+            } else {
+                result.elevenlabs = { ok: false, status: elResp.status };
+            }
+        } catch (err) {
+            result.elevenlabs = { ok: false, error: String(err.message) };
+        }
+    }
+
+    res.json({ success: true, result });
 });
 
 /**
@@ -176,15 +281,24 @@ Keep the changes musically sensible and minimal unless the user asks for an extr
         });
 
     } catch (error) {
-        console.error('Gemini API error:', error);
-        
-        // Fallback to mock response
-        const mockResponse = generateMockGeminiResponse(req.body.prompt, req.body.currentPatterns);
-        
-        res.json({
-            success: true,
-            modifications: mockResponse,
-            explanation: mockResponse.explanation
+        console.error('Gemini API error:', error && error.message ? error.message : error);
+
+        // If Gemini API key is not configured, fallback to mock (local dev convenience)
+        if (!GEMINI_API_KEY) {
+            console.log('GEMINI_API_KEY not present - returning mock Gemini response');
+            const mockResponse = generateMockGeminiResponse(req.body.prompt, req.body.currentPatterns);
+            return res.json({
+                success: true,
+                modifications: mockResponse,
+                explanation: mockResponse.explanation
+            });
+        }
+
+        // Otherwise, surface an error to the client with a sanitized message
+        return res.status(500).json({
+            success: false,
+            error: 'Failed to process prompt with Gemini',
+            details: String(error && error.message ? error.message : error)
         });
     }
 });
@@ -316,6 +430,59 @@ app.post('/api/elevenlabs/producer-tag', async (req, res) => {
             success: false,
             error: 'Failed to generate producer tag'
         });
+    }
+});
+
+
+/**
+ * Upload Teachable Machine model files.
+ * Accepts either a single ZIP file (containing model.json, metadata.json, weights.bin)
+ * or multiple files uploaded with field name 'files'.
+ * Writes files to ./models/tm-my-audio-model safely.
+ */
+app.post('/api/upload-model', upload.any(), async (req, res) => {
+    try {
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ success: false, error: 'No files uploaded' });
+        }
+
+        // If a single zip is provided, try to extract it in-memory
+        const zipFile = req.files.find(f => f.mimetype === 'application/zip' || f.originalname.endsWith('.zip'));
+        if (zipFile) {
+            // Lazy require to avoid adding dependency unless used
+            const AdmZip = require('adm-zip');
+            const zip = new AdmZip(zipFile.buffer);
+            const entries = zip.getEntries();
+
+            // Validate entries and write only expected filenames
+            const allowed = new Set(['model.json', 'metadata.json', 'weights.bin']);
+            entries.forEach(entry => {
+                const name = path.basename(entry.entryName);
+                if (!allowed.has(name)) return;
+                const destPath = path.join(MODEL_DIR, name);
+                // Prevent path traversal
+                if (!destPath.startsWith(MODEL_DIR)) return;
+                fs.writeFileSync(destPath, entry.getData());
+                console.log('Wrote model file from zip:', name);
+            });
+
+            return res.json({ success: true, message: 'Model uploaded (zip)' });
+        }
+
+        // Otherwise accept individual files
+        for (const file of req.files) {
+            const name = path.basename(file.originalname);
+            if (!['model.json', 'metadata.json', 'weights.bin'].includes(name)) continue;
+            const destPath = path.join(MODEL_DIR, name);
+            if (!destPath.startsWith(MODEL_DIR)) continue; // safety
+            fs.writeFileSync(destPath, file.buffer);
+            console.log('Wrote model file:', name);
+        }
+
+        return res.json({ success: true, message: 'Model uploaded' });
+    } catch (err) {
+        console.error('Model upload error:', err);
+        return res.status(500).json({ success: false, error: String(err.message) });
     }
 });
 

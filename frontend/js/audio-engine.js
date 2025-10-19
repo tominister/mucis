@@ -177,9 +177,14 @@ class AudioEngine {
     setupSequencer() {
         console.log('Setting up sequencer with scheduleRepeat...');
         
-        // Clear any existing scheduled events
-        if (this.sequenceId) {
-            this.transport.clear(this.sequenceId);
+        // Clear any existing scheduled events (handle ID === 0 correctly)
+        if (this.sequenceId != null) {
+            try {
+                this.transport.clear(this.sequenceId);
+            } catch (e) {
+                console.warn('Failed to clear previous sequenceId', this.sequenceId, e);
+            }
+            this.sequenceId = null;
         }
         
         // Schedule a callback every 16th note
@@ -348,9 +353,13 @@ class AudioEngine {
      */
     stop() {
         try {
-            // Clear the scheduled sequence
-            if (this.sequenceId) {
-                this.transport.clear(this.sequenceId);
+            // Clear the scheduled sequence (handle ID === 0 correctly)
+            if (this.sequenceId != null) {
+                try {
+                    this.transport.clear(this.sequenceId);
+                } catch (e) {
+                    console.warn('Failed to clear sequenceId on stop', this.sequenceId, e);
+                }
                 this.sequenceId = null;
             }
             

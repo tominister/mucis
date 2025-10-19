@@ -418,6 +418,18 @@ section h2::after {
     border-radius: 5px;
 }
 
+.record-action-buttons {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+    align-items: center;
+}
+
+.record-action-buttons .btn-secondary {
+    padding: 8px 12px;
+    font-weight: 600;
+}
+
 #waveform {
     width: 100%;
     max-width: 700px;

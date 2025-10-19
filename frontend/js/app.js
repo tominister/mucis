@@ -31,6 +31,9 @@ class SoundSketchApp {
         this.handlePromptSubmit = this.handlePromptSubmit.bind(this);
         this.handleQuickPrompt = this.handleQuickPrompt.bind(this);
         this.handleGenerateTag = this.handleGenerateTag.bind(this);
+    this.handleRemoveTag = this.handleRemoveTag.bind(this);
+        this.handleGenerateNew = this.handleGenerateNew.bind(this);
+        this.handleGenerateAdd = this.handleGenerateAdd.bind(this);
         this.handleClearBeat = this.handleClearBeat.bind(this);
     }
 
@@ -53,6 +56,11 @@ class SoundSketchApp {
             
             // Set up event listeners
             this.setupEventListeners();
+
+            // Disable New/Add until a classification is available
+            if (this.elements.generateNewBtn) this.elements.generateNewBtn.disabled = true;
+            if (this.elements.generateAddBtn) this.elements.generateAddBtn.disabled = true;
+            if (this.elements.removeTagBtn) this.elements.removeTagBtn.disabled = true;
             
             // Initialize non-audio components first
             this.showLoading('Setting up AI classifier...');
@@ -83,6 +91,14 @@ class SoundSketchApp {
             console.error('Failed to initialize app:', error);
             this.showError('Failed to initialize. Please refresh and try again.');
         }
+    }
+
+    /**
+     * Populate model mapping UI if model metadata is available
+     */
+    async populateModelMapping() {
+        // Model mapping UI removed per user request
+        return;
     }
 
     /**
@@ -151,10 +167,17 @@ class SoundSketchApp {
             // Producer tag
             producerTag: safeGetElement('producerTag'),
             generateTagBtn: safeGetElement('generateTagBtn'),
+            removeTagBtn: safeGetElement('removeTagBtn'),
+            // New/Add buttons added to recording controls
+            generateNewBtn: safeGetElement('generateNewBtn'),
+            generateAddBtn: safeGetElement('generateAddBtn'),
             
             // Loading
             loadingOverlay: safeGetElement('loadingOverlay'),
-            loadingText: safeGetElement('loadingText')
+            loadingText: safeGetElement('loadingText'),
+            debugPredictions: safeGetElement('debugPredictions'),
+
+            // Dataset/model UI removed per user request
         };
     }
 
@@ -174,6 +197,16 @@ class SoundSketchApp {
         // Recording controls
         safeAddEventListener(this.elements.recordBtn, 'click', this.handleRecordStart);
         safeAddEventListener(this.elements.stopBtn, 'click', this.handleRecordStop);
+    safeAddEventListener(this.elements.generateNewBtn, 'click', this.handleGenerateNew);
+    safeAddEventListener(this.elements.generateAddBtn, 'click', this.handleGenerateAdd);
+    safeAddEventListener(this.elements.removeTagBtn, 'click', this.handleRemoveTag);
+        // Debug controls
+        if (this.elements.debugPredictions) {
+            this.elements.debugPredictions.addEventListener('change', (e) => {
+                this.aiClassifier.setDebugPredictions(e.target.checked);
+            });
+        }
+        // Dataset/model UI removed per user request — no listeners to add
         
         // Beat controls
         safeAddEventListener(this.elements.playBeatBtn, 'click', this.handlePlayBeat);
@@ -198,7 +231,10 @@ class SoundSketchApp {
         }
         
         // Narration
-        safeAddEventListener(this.elements.narrateBtn, 'click', this.handleNarrate);
+        // Narration button may not be present in all builds; only add listener if element exists
+        if (this.elements.narrateBtn) {
+            safeAddEventListener(this.elements.narrateBtn, 'click', this.handleNarrate);
+        }
         
         // Sample selectors
         safeAddEventListener(this.elements.kickSelector, 'change', (e) => {
@@ -290,10 +326,60 @@ class SoundSketchApp {
      * Set up component callbacks
      */
     setupCallbacks() {
-        // AI classification results
+        // AI classification results (high-level confidences)
         this.aiClassifier.onClassificationResults((classification) => {
+            // Update Section 2 confidence bars
             this.updateClassificationDisplay(classification);
-            this.generateBeatFromClassification(classification);
+
+            // Store a usable lastClassification mapping by generating patterns but do NOT apply them automatically.
+            try {
+                const generated = this.audioEngine.generatePatternFromClassification(classification);
+                // Ensure lastClassification shape is {kick:[], snare:[], hihat:[], clap:[]}
+                this.lastClassification = {
+                    kick: generated.kick || generated.kick || new Array(16).fill(0),
+                    snare: generated.snare || new Array(16).fill(0),
+                    hihat: generated.hihat || new Array(16).fill(0),
+                    clap: generated.clap || new Array(16).fill(0)
+                };
+            } catch (err) {
+                console.warn('Could not generate lastClassification from high-level classification:', err);
+                this.lastClassification = null;
+            }
+
+            // Enable New/Add buttons so the user can choose to apply or append
+            if (this.elements.generateNewBtn) this.elements.generateNewBtn.disabled = false;
+            if (this.elements.generateAddBtn) this.elements.generateAddBtn.disabled = false;
+        });
+
+        // Per-step (16-step) classification -> produce matrix
+        this.aiClassifier.onStepClassification((result) => {
+            if (!result || !result.matrix) return;
+            const m = result.matrix;
+
+            // Ensure matrix has arrays of length 16 for the 4 instruments
+            const safeRow = (row) => (Array.isArray(row) ? row.slice(0,16).map(v => Number(Boolean(v))) : new Array(16).fill(0));
+
+            const kick = safeRow(m.kick || []);
+            const snare = safeRow(m.snare || []);
+            const hihat = safeRow(m.hihat || []);
+            const clap = safeRow(m.clap || []);
+
+            // Save the last classification (for New/Add buttons). Do NOT apply to the main pattern grid automatically.
+            this.lastClassification = { kick, snare, hihat, clap };
+
+            // Update Section 2 confidence bars based on proportion of active steps
+            const sum = arr => arr.reduce((s, x) => s + Number(Boolean(x)), 0);
+            const conf = {
+                kick: (sum(kick) / 16),
+                snare: (sum(snare) / 16),
+                hihat: (sum(hihat) / 16),
+                clap: (sum(clap) / 16)
+            };
+            this.updateClassificationDisplay(conf);
+
+            // Enable New/Add buttons so the user can choose to apply or append
+            if (this.elements.generateNewBtn) this.elements.generateNewBtn.disabled = false;
+            if (this.elements.generateAddBtn) this.elements.generateAddBtn.disabled = false;
         });
         
         // Audio engine callbacks will be set up after user interaction
@@ -344,6 +430,11 @@ class SoundSketchApp {
     async handleRecordStart() {
         if (!this.isInitialized) return;
         
+        // Enforce max recording length equal to one bar at current tempo
+        // barDurationSeconds = 60 / (BPM) * 4 beats
+        const bpm = this.audioEngine ? this.audioEngine.bpm : (this.elements.tempoSlider ? Number(this.elements.tempoSlider.value) : 120);
+        const barDuration = (60 / Math.max(1, bpm)) * 4; // seconds
+
         const success = this.aiClassifier.startRecording();
         if (success) {
             this.elements.recordBtn.disabled = true;
@@ -354,6 +445,14 @@ class SoundSketchApp {
             this.recordingTimer = setInterval(() => {
                 this.updateRecordingTime();
             }, 100);
+
+            // Auto-stop after one bar to quantize into 16 steps
+            this.autoStopTimeout = setTimeout(() => {
+                if (this.aiClassifier.isRecording) {
+                    console.log('Auto-stopping recording after one bar');
+                    this.handleRecordStop();
+                }
+            }, Math.max(500, Math.floor(barDuration * 1000)));
         }
     }
 
@@ -370,6 +469,31 @@ class SoundSketchApp {
             clearInterval(this.recordingTimer);
             this.recordingTimer = null;
         }
+
+        // Clear auto-stop timeout if set
+        if (this.autoStopTimeout) {
+            clearTimeout(this.autoStopTimeout);
+            this.autoStopTimeout = null;
+        }
+    }
+
+    /**
+     * Render the given 4x16 matrix into the UI pattern steps
+     */
+    renderMatrixToUI(matrix) {
+        const instruments = ['kick','snare','hihat','clap'];
+        instruments.forEach(inst => {
+            const steps = document.querySelectorAll(`[data-instrument="${inst}"] .pattern-steps .step`);
+            if (!steps || steps.length === 0) return;
+            const row = matrix[inst] || new Array(16).fill(0);
+            for (let i = 0; i < Math.min(16, steps.length); i++) {
+                if (row[i]) {
+                    steps[i].classList.add('active');
+                } else {
+                    steps[i].classList.remove('active');
+                }
+            }
+        });
     }
 
     /**
@@ -632,23 +756,29 @@ class SoundSketchApp {
         try {
             const currentPatterns = this.audioEngine.getPatterns();
             const result = await this.apiClient.processPromptWithGemini(prompt, currentPatterns);
-            
-            if (result.success) {
+            console.log('processPromptWithGemini result:', result);
+
+            if (result && result.success) {
                 // Apply modifications
                 this.audioEngine.applyDJModifications(result.modifications);
                 this.updateBeatPatternDisplay();
-                
+
                 // Update AI response
-                this.elements.aiResponseText.textContent = result.explanation;
-                this.elements.narrateBtn.disabled = false;
-                
+                this.elements.aiResponseText.textContent = result.explanation || 'Applied modifications';
+                if (this.elements.narrateBtn) this.elements.narrateBtn.disabled = false;
+
                 // Clear prompt
                 this.elements.djPrompt.value = '';
+            } else {
+                // Handle non-success response gracefully
+                console.warn('Gemini returned non-success result:', result);
+                const msg = (result && result.error) ? String(result.error) : 'No response from AI';
+                this.elements.aiResponseText.textContent = `Error processing prompt: ${msg}`;
             }
             
         } catch (error) {
-            console.error('Error processing prompt:', error);
-            this.elements.aiResponseText.textContent = 'Error processing prompt. Please try again.';
+            console.error('Unexpected error processing prompt:', error);
+            this.elements.aiResponseText.textContent = `Error processing prompt. ${error && error.message ? error.message : ''}`;
         } finally {
             this.elements.applyPromptBtn.disabled = false;
             this.elements.applyPromptBtn.textContent = '🤖 Apply with Gemini';
@@ -684,6 +814,7 @@ class SoundSketchApp {
                 // Store the tag audio for playback at the start of each loop
                 this.producerTagAudio = audioURL;
                 this.audioEngine.setProducerTag(audioURL);
+                if (this.elements.removeTagBtn) this.elements.removeTagBtn.disabled = false;
                 this.elements.generateTagBtn.textContent = '✅ Tag Generated!';
                 setTimeout(() => {
                     this.elements.generateTagBtn.textContent = '🎵 Generate Tag';
@@ -695,6 +826,7 @@ class SoundSketchApp {
                 // Store a simple default if user didn't type anything — keep their tag otherwise
                 const spokenTag = tag || 'hey astro';
                 this.audioEngine.setProducerTagSpeech(spokenTag);
+                if (this.elements.removeTagBtn) this.elements.removeTagBtn.disabled = false;
                 this.elements.generateTagBtn.textContent = '✅ Tag Ready (TTS)';
                 setTimeout(() => {
                     this.elements.generateTagBtn.textContent = '🎵 Generate Tag';
@@ -706,6 +838,27 @@ class SoundSketchApp {
             alert('Error generating producer tag. Please try again.');
         } finally {
             this.elements.generateTagBtn.disabled = false;
+        }
+    }
+
+    /**
+     * Remove producer tag from the beat
+     */
+    handleRemoveTag() {
+        try {
+            // Clear stored audio and engine players
+            this.producerTagAudio = null;
+            if (this.audioEngine) {
+                this.audioEngine.setProducerTag(null);
+                this.audioEngine.setProducerTagSpeech(null);
+            }
+
+            // Disable the remove button
+            if (this.elements.removeTagBtn) this.elements.removeTagBtn.disabled = true;
+
+            console.log('✅ Producer tag removed from beat');
+        } catch (error) {
+            console.error('Error removing producer tag:', error);
         }
     }
 
@@ -743,33 +896,109 @@ class SoundSketchApp {
     /**
      * Generate beat from classification
      */
-    generateBeatFromClassification(classification) {
-        // Generate patterns regardless of audio engine initialization
-        const patterns = this.audioEngine.generatePatternFromClassification(classification);
-        
-        // Update the patterns in the audio engine
-        Object.keys(patterns).forEach(instrument => {
-            if (this.audioEngine.patterns[instrument]) {
-                this.audioEngine.patterns[instrument] = patterns[instrument];
-            }
-        });
-        
-        // Update the visual display
+    generateBeatFromClassification(classification, mode = 'new') {
+        // mode: 'new' -> replace current patterns; 'add' -> merge/append onto existing patterns
+        const generated = this.audioEngine.generatePatternFromClassification(classification);
+
+        // If mode is 'add', merge generated patterns into current patterns (logical OR)
+        if (mode === 'add') {
+            const current = this.audioEngine.getPatterns();
+            Object.keys(generated).forEach(instr => {
+                if (!current[instr]) return;
+                const merged = current[instr].map((v, i) => Boolean(v) || Boolean(generated[instr][i]));
+                this.audioEngine.updatePattern(instr, merged);
+            });
+        } else {
+            // 'new' or any other value: replace
+            Object.keys(generated).forEach(instrument => {
+                if (this.audioEngine.patterns[instrument]) {
+                    this.audioEngine.patterns[instrument] = generated[instrument];
+                }
+            });
+        }
+
+        // Update visual display
         this.updateBeatPatternDisplay();
-        
-        console.log('✅ Beat generated from classification!');
-        
-        // Enable Play button so the user can activate audio and play immediately
+
+        console.log(`✅ Beat generated from classification! (mode=${mode})`);
+
+        // Enable Play button
         if (this.elements.playBeatBtn) {
             this.elements.playBeatBtn.disabled = false;
             this.elements.playBeatBtn.textContent = '☀️ Play Beat';
-            console.log('Play button enabled after beat generation');
         }
 
-        // If audio engine is not yet initialized, user still needs to click anywhere
         if (!this.audioEngine.isInitialized) {
             console.log('Audio not ready yet - patterns saved for when you click to play!');
         }
+    }
+
+    /**
+     * Handler for Generate New (replace)
+     */
+    handleGenerateNew() {
+        if (!this.aiClassifier && !this.lastClassification) return;
+        // Prefer per-step matrix if available (arrays of length 16)
+        const aiLast = (this.aiClassifier && typeof this.aiClassifier.getLastClassification === 'function') ? this.aiClassifier.getLastClassification() : null;
+        const classification = (this.lastClassification && Array.isArray(this.lastClassification.kick)) ? this.lastClassification : aiLast || this.lastClassification;
+        if (!classification) {
+            console.warn('No classification available to generate from');
+            return;
+        }
+
+        // If classification appears to be a per-step matrix (arrays), apply directly
+        const isMatrix = Array.isArray(classification.kick) && classification.kick.length === 16;
+        if (isMatrix) {
+            // Replace current patterns with the provided matrix
+            Object.keys(classification).forEach(instr => {
+                if (this.audioEngine.patterns[instr]) {
+                    // Ensure boolean values
+                    const pattern = classification[instr].map(v => Boolean(v));
+                    this.audioEngine.updatePattern(instr, pattern);
+                }
+            });
+            this.updateBeatPatternDisplay();
+            // Save lastClassification
+            this.lastClassification = classification;
+            console.log('✅ Applied per-step matrix as NEW pattern');
+            return;
+        }
+
+        // Otherwise treat as high-level confidences and generate patterns
+        this.lastClassification = classification;
+        this.generateBeatFromClassification(classification, 'new');
+    }
+
+    /**
+     * Handler for Generate Add (merge)
+     */
+    handleGenerateAdd() {
+        if (!this.aiClassifier && !this.lastClassification) return;
+        const aiLast = (this.aiClassifier && typeof this.aiClassifier.getLastClassification === 'function') ? this.aiClassifier.getLastClassification() : null;
+        const classification = (this.lastClassification && Array.isArray(this.lastClassification.kick)) ? this.lastClassification : aiLast || this.lastClassification;
+        if (!classification) {
+            console.warn('No classification available to generate from');
+            return;
+        }
+
+        const isMatrix = Array.isArray(classification.kick) && classification.kick.length === 16;
+        if (isMatrix) {
+            // Merge per-step matrix into current patterns (logical OR)
+            const current = this.audioEngine.getPatterns();
+            Object.keys(classification).forEach(instr => {
+                if (!current[instr]) return;
+                const merged = current[instr].map((v, i) => Boolean(v) || Boolean(classification[instr][i]));
+                this.audioEngine.updatePattern(instr, merged);
+            });
+            this.updateBeatPatternDisplay();
+            this.lastClassification = classification;
+            console.log('✅ Merged per-step matrix into current pattern (ADD)');
+            return;
+        }
+
+        // Otherwise treat as high-level confidences and generate patterns then merge
+        this.lastClassification = classification;
+        this.generateBeatFromClassification(classification, 'add');
     }
 
     /**
