@@ -429,11 +429,60 @@ class StarTracksApp {
      */
     async handleRecordStart() {
         if (!this.isInitialized) return;
+
+        // Ensure audio context and audio engine are activated on record click
+        try {
+            if (!this.audioEngine.isInitialized) {
+                // Tone.start requires a user gesture in many browsers
+                await Tone.start();
+                console.log('Audio context activated via record click');
+                await this.audioEngine.init();
+
+                // Wire up audio engine step callback if not already set
+                this.audioEngine.onStepChanged((step) => {
+                    this.updateBeatVisualization(step);
+                });
+            }
+
+            // Ensure the AI classifier audio recording is prepared (will prompt for mic)
+            if (!this.aiClassifier.getIsInitialized() && typeof this.aiClassifier.setupAudioRecording === 'function') {
+                try {
+                    // setupAudioRecording will create mediaRecorder and analyser
+                    await this.aiClassifier.setupAudioRecording();
+                    console.log('Microphone setup completed via record click');
+                } catch (err) {
+                    console.warn('Microphone setup failed on record click:', err);
+                    // continue — startRecording will handle error cases as well
+                }
+            }
+        } catch (err) {
+            console.warn('Error activating audio for recording:', err);
+        }
         
         // Enforce max recording length equal to one bar at current tempo
         // barDurationSeconds = 60 / (BPM) * 4 beats
         const bpm = this.audioEngine ? this.audioEngine.bpm : (this.elements.tempoSlider ? Number(this.elements.tempoSlider.value) : 120);
         const barDuration = (60 / Math.max(1, bpm)) * 4; // seconds
+
+        // Ensure the classifier has a working MediaRecorder before starting
+        let micReady = true;
+        try {
+            if (!this.aiClassifier.getIsInitialized()) {
+                await this.aiClassifier.setupAudioRecording();
+            }
+            // mediaRecorder should now exist
+            if (!this.aiClassifier.mediaRecorder) {
+                micReady = false;
+            }
+        } catch (err) {
+            console.error('Microphone setup failed:', err);
+            micReady = false;
+        }
+
+        if (!micReady) {
+            this.showError('Microphone unavailable or permission denied. Please allow microphone access and try again.');
+            return;
+        }
 
         const success = this.aiClassifier.startRecording();
         if (success) {

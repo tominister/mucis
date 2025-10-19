@@ -487,6 +487,81 @@ app.post('/api/upload-model', upload.any(), async (req, res) => {
 });
 
 /**
+ * Upload beatbox audio for server-side analysis (optional)
+ * Accepts a multipart form field 'audio'
+ * Returns a small rhythmData object for frontend consumption (duration, bpm, syllables)
+ */
+app.post('/api/upload-audio', upload.single('audio'), async (req, res) => {
+    try {
+        if (!req.file || !req.file.buffer) {
+            return res.status(400).json({ success: false, error: 'No audio uploaded' });
+        }
+
+        // For now: save the file to a temp location (optional) and return a mock rhythmData
+        const tmpDir = path.join(__dirname, '..', 'tmp');
+        try { fs.mkdirSync(tmpDir, { recursive: true }); } catch (e) { /* ignore */ }
+        const filename = `beatbox_${Date.now()}.webm`;
+        const destPath = path.join(tmpDir, filename);
+        fs.writeFileSync(destPath, req.file.buffer);
+        console.log('Saved uploaded beatbox to', destPath);
+
+        // Return a mock rhythmData that the frontend can use if it wants to call generate-pattern
+        const rhythmData = {
+            duration: 2.5,
+            bpm: 120,
+            syllables: [
+                { phoneme: 'b', time: 0.0, type: 'kick' },
+                { phoneme: 'ts', time: 0.25, type: 'hihat' },
+                { phoneme: 'k', time: 0.5, type: 'snare' },
+                { phoneme: 'ts', time: 0.75, type: 'hihat' },
+                { phoneme: 'b', time: 1.0, type: 'kick' },
+                { phoneme: 'ts', time: 1.25, type: 'hihat' },
+                { phoneme: 'pf', time: 1.5, type: 'clap' },
+                { phoneme: 'ts', time: 1.75, type: 'hihat' }
+            ]
+        };
+
+        return res.json({ success: true, rhythmData, message: 'Audio received (mock analysis)' });
+    } catch (err) {
+        console.error('upload-audio error:', err);
+        return res.status(500).json({ success: false, error: String(err.message) });
+    }
+});
+
+
+/**
+ * Generate a drum pattern from rhythmData (server-side helper)
+ * Body: { rhythmData: {...}, style: optional }
+ */
+app.post('/api/generate-pattern', async (req, res) => {
+    try {
+        const { rhythmData, style } = req.body || {};
+        if (!rhythmData || !Array.isArray(rhythmData.syllables)) {
+            return res.status(400).json({ success: false, error: 'Missing rhythmData.syllables' });
+        }
+
+        // Map to a 16-step pattern
+        const pattern = mapSyllablesToPattern(rhythmData);
+
+        // Optionally enhance via Gemini if a style is provided (best-effort)
+        if (style && GEMINI_API_KEY) {
+            try {
+                const enhanced = await enhancePatternWithGemini(pattern, style, rhythmData.bpm || 120);
+                return res.json({ success: true, pattern: enhanced });
+            } catch (e) {
+                console.warn('Pattern enhancement failed, returning base pattern', e);
+                return res.json({ success: true, pattern });
+            }
+        }
+
+        return res.json({ success: true, pattern });
+    } catch (err) {
+        console.error('generate-pattern error:', err);
+        return res.status(500).json({ success: false, error: String(err.message) });
+    }
+});
+
+/**
  * Generate mock Gemini response for testing
  */
 function generateMockGeminiResponse(prompt, currentPatterns) {
@@ -730,13 +805,43 @@ app.use((error, req, res, next) => {
 });
 
 /**
- * Start the server
+ * Start the server with a small retry strategy when the port is in use.
+ * Tries the configured PORT and, on EADDRINUSE, increments port and retries
+ * up to MAX_ATTEMPTS times. This prevents unhandled 'error' events crashing
+ * the process during local development when the port is already taken.
  */
-app.listen(PORT, () => {
-    console.log(`🎵 StarTracks backend running on port ${PORT}`);
-    console.log(`🔗 Frontend available at: http://localhost:${PORT}`);
-    console.log(`🔑 Gemini API: ${GEMINI_API_KEY ? 'Configured' : 'Not configured (using mock)'}`);
-    console.log(`🔑 ElevenLabs API: ${ELEVENLABS_API_KEY ? 'Configured' : 'Not configured (using mock)'}`);
-});
+const MAX_ATTEMPTS = 5;
+let startAttempts = 0;
+
+function startServer(port) {
+    const server = app.listen(port, () => {
+        const actualPort = server.address() && server.address().port ? server.address().port : port;
+        console.log(`🎵 StarTracks backend running on port ${actualPort}`);
+        console.log(`🔗 Frontend available at: http://localhost:${actualPort}`);
+        console.log(`🔑 Gemini API: ${GEMINI_API_KEY ? 'Configured' : 'Not configured (using mock)'}`);
+        console.log(`🔑 ElevenLabs API: ${ELEVENLABS_API_KEY ? 'Configured' : 'Not configured (using mock)'}`);
+    });
+
+    server.on('error', (err) => {
+        if (err && err.code === 'EADDRINUSE') {
+            console.warn(`Port ${port} is in use.`);
+            startAttempts += 1;
+            if (startAttempts <= MAX_ATTEMPTS) {
+                const nextPort = Number(port) + 1;
+                console.warn(`Attempt ${startAttempts}/${MAX_ATTEMPTS}: trying port ${nextPort}...`);
+                // small delay before retry
+                setTimeout(() => startServer(nextPort), 500);
+                return;
+            }
+            console.error(`Failed to bind to a port after ${MAX_ATTEMPTS} attempts. Exiting.`);
+            process.exit(1);
+        } else {
+            console.error('Server error:', err);
+            process.exit(1);
+        }
+    });
+}
+
+startServer(Number(PORT));
 
 module.exports = app;
