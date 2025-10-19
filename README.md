@@ -1,4 +1,4 @@
-# 🎵 StarTrackz
+# 🎵 StarTracks
 
 **Transform your beatbox into AI-powered music!**
 
