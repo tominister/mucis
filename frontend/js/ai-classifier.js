@@ -1,5 +1,5 @@
 /**
- * AI Classifier for SoundSketch.tech
+ * AI Classifier for StarTracks
  * Handles audio recording, processing, and classification using TensorFlow.js
  */
 
@@ -107,7 +107,7 @@ class AIClassifier {
         });
 
         const content = await zip.generateAsync({ type: 'blob' });
-        saveAs(content, `soundsketch_dataset_${Date.now()}.zip`);
+    saveAs(content, `startracks_dataset_${Date.now()}.zip`);
         return true;
     }
 

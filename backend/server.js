@@ -733,7 +733,7 @@ app.use((error, req, res, next) => {
  * Start the server
  */
 app.listen(PORT, () => {
-    console.log(`🎵 SoundSketch.tech backend running on port ${PORT}`);
+    console.log(`🎵 StarTracks backend running on port ${PORT}`);
     console.log(`🔗 Frontend available at: http://localhost:${PORT}`);
     console.log(`🔑 Gemini API: ${GEMINI_API_KEY ? 'Configured' : 'Not configured (using mock)'}`);
     console.log(`🔑 ElevenLabs API: ${ELEVENLABS_API_KEY ? 'Configured' : 'Not configured (using mock)'}`);

@@ -1,4 +1,4 @@
-# 🎵 SoundSketch.tech - ElevenLabs + Gemini Integration Complete
+# 🎵 StarTracks - ElevenLabs + Gemini Integration Complete
 
 ## ✅ Implementation Summary
 

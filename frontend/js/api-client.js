@@ -1,5 +1,5 @@
 /**
- * API Client for SoundSketch.tech
+ * API Client for StarTracks
  * Handles communication with backend APIs (Gemini, ElevenLabs)
  */
 

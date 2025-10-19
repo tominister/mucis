@@ -1,9 +1,9 @@
 /**
- * Main Application for SoundSketch.tech
+ * Main Application for StarTracks
  * Coordinates all components and handles UI interactions
  */
 
-class SoundSketchApp {
+class StarTracksApp {
     constructor() {
         // Core components
         this.audioEngine = new AudioEngine();
@@ -52,7 +52,7 @@ class SoundSketchApp {
                 return;
             }
             
-            this.showLoading('Initializing SoundSketch.tech...');
+            this.showLoading('Initializing StarTracks...');
             
             // Set up event listeners
             this.setupEventListeners();
@@ -84,8 +84,8 @@ class SoundSketchApp {
             // Show a friendly message about clicking to activate audio
             this.showAudioActivationMessage();
             
-            console.log('🎵 SoundSketch.tech ready! Click anywhere to activate audio.');
-            console.log('SoundSketch.tech initialized successfully!');
+            console.log('🎵 StarTracks ready! Click anywhere to activate audio.');
+            console.log('StarTracks initialized successfully!');
             
         } catch (error) {
             console.error('Failed to initialize app:', error);
@@ -1166,12 +1166,12 @@ class SoundSketchApp {
 
 // Initialize the app when the page loads
 document.addEventListener('DOMContentLoaded', async () => {
-    const app = new SoundSketchApp();
+    const app = new StarTracksApp();
     await app.init();
     
     // Make app globally available for debugging
-    window.soundSketchApp = app;
+    window.starTracksApp = app;
 });
 
 // Export for use in other modules
-window.SoundSketchApp = SoundSketchApp;
+window.StarTracksApp = StarTracksApp;

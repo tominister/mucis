@@ -1,5 +1,5 @@
 /**
- * Audio Engine for SoundSketch.tech
+ * Audio Engine for StarTracks
  * Handles beat generation, sequencing, and playback using Tone.js
  */
 

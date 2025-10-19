@@ -1,5 +1,5 @@
 {
-  "name": "soundsketch-tech",
+  "name": "startracks",
   "version": "1.0.0",
   "description": "AI-powered beat creation from beatboxing and voice commands",
   "main": "backend/server.js",
@@ -29,6 +29,6 @@
     "tone.js",
     "tensorflow.js"
   ],
-  "author": "SoundSketch Team",
+  "author": "StarTracks Team",
   "license": "MIT"
 }

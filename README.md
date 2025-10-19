@@ -2,11 +2,11 @@
 
 **Transform your beatbox into AI-powered music!**
 
-[![Demo](https://img.shields.io/badge/Live%20Demo-soundsketch.tech-blue)](http://soundsketch.tech)
+[![Demo](https://img.shields.io/badge/Live%20Demo-startracks-blue)](http://startracks)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Hackathon](https://img.shields.io/badge/Built%20for-Hackathon-orange.svg)](.)
 
-## 🎯 What is SoundSketch.tech?
+## 🎯 What is StarTracks?
 
 A revolutionary web app that combines **human creativity** with **AI intelligence**:
 
@@ -20,7 +20,7 @@ A revolutionary web app that combines **human creativity** with **AI intelligenc
 
 ## 🚀 Live Demo
 
-**Try it now**: [soundsketch.tech](http://soundsketch.tech)
+**Try it now**: [startracks](http://startracks)
 
 Or run locally:
 ```bash
@@ -64,7 +64,7 @@ npm start
 - **DigitalOcean** - Cloud hosting and deployment
 
 ### Domain
-- **.tech Domain** - Professional branding with soundsketch.tech
+- **Brand** - Professional branding as StarTracks
 
 ## 🏆 Hackathon Sponsor Prizes
 
@@ -80,7 +80,7 @@ This project specifically targets multiple sponsor categories:
 ## 📁 Project Structure
 
 ```
-soundsketch-tech/
+startracks/
 ├── 📁 frontend/           # Web interface
 │   ├── 📄 index.html     # Main UI
 │   ├── 🎨 styles.css     # Styling
@@ -126,7 +126,7 @@ npm start
 
 ### Perfect 3-Minute Demo Flow:
 
-1. **Intro (30s)**: "SoundSketch.tech turns beatboxing into AI music"
+1. **Intro (30s)**: "StarTracks turns beatboxing into AI music"
 2. **Beatbox (30s)**: Live recording → show AI classification results
 3. **Generate (30s)**: AI creates beat → play the loop
 4. **DJ Prompts (90s)**: 
@@ -228,7 +228,7 @@ MIT License - feel free to use this project for your own hackathons!
 
 ## 🎵 Ready to Transform Sound?
 
-**[Try SoundSketch.tech now →](http://soundsketch.tech)**
+**[Try StarTracks now →](http://startracks)**
 
 *Turn your voice into music. Turn your ideas into beats. Turn your creativity into AI-powered innovation.*
 

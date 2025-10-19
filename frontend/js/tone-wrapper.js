@@ -1,5 +1,5 @@
 /**
- * Tone.js Wrapper for SoundSketch.tech
+ * Tone.js Wrapper for StarTracks
  * Defers Tone.js loading until after user interaction
  */
 
