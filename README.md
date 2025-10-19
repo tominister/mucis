@@ -1,4 +1,4 @@
-# 🎵 SoundSketch.tech
+# 🎵 StarTrackz
 
 **Transform your beatbox into AI-powered music!**
 
